@@ -22,15 +22,18 @@
 | 组 | 类型 | 说明 |
 |---|---|---|
 | 自动选择 | url-test | 候选=各地区组,组内再自动选最快节点(300s 测速 / 100ms 容差 / lazy) |
-| 手动选择 | select | 先地区组、后全部单节点 |
-| AI服务 | select | 候选:美国 → 新加坡 → 日本;规则集:openai / anthropic / google-gemini |
-| 加密货币 | select | 候选:台湾 → 日本 → 新加坡;规则集:category-cryptocurrency |
+| 手动选择 | select | 先地区组、后全部单节点(含未归类节点) |
+| AI服务 | select | 候选:美国 → 新加坡 → 日本;分流:`category-ai-!cn` 聚合规则,自动覆盖 OpenAI / Claude / Gemini / Grok / Perplexity / HuggingFace 等全部境外 AI,上游每日更新 |
+| 加密货币 | select | 候选:台湾 → 日本 → 新加坡;分流:category-cryptocurrency |
+| 国外媒体 | select | 候选:香港 → 美国 → 台湾 → 日本 → 新加坡;分流:Netflix / YouTube / Disney / PrimeVideo / HBO / TikTok / Spotify |
 | 国内媒体 | select | 默认 DIRECT(B站/爱奇艺/优酷直连),可切手动/自动 |
-| 国外媒体 | select | 候选:香港 → 美国 → 台湾 → 日本 → 新加坡;规则集:Netflix/YouTube/Disney/PrimeVideo/HBO/TikTok/Spotify |
+| Apple | select | 默认 DIRECT,可切各地区;分流:apple / icloud |
 | Final | select | 兜底:自动 / 手动 / 各地区 / DIRECT,规则最后 MATCH 进它 |
-| 地区分组 | url-test | 香港 / 台湾 / 日本 / 新加坡 / 韩国 / 美国,按节点名正则归类;空地区自动隐藏,未匹配节点进「其他节点」 |
+| 地区分组 | url-test | 香港 / 台湾 / 日本 / 新加坡 / 韩国 / 美国,按节点名正则自动归类,空地区自动隐藏 |
 
-规则顺序:局域网 → 国内媒体 → AI → 加密货币 → 国外媒体 → 中国大陆直连 → Final 兜底
+规则顺序:局域网直连 → 苹果国内服务/国内 AI 直连 → 国内媒体 → Apple → AI服务 → 加密货币 → 国外媒体 → 中国大陆直连 → Final 兜底
+
+国内 AI(DeepSeek、通义千问、Kimi 等)走 `category-ai-cn` 规则强制直连,不会被误分到 AI服务 组,不影响访问速度。
 
 ## 自定义
 
@@ -38,14 +41,14 @@
 
 - **加减地区**:改 `REGION_DEFS`(正则匹配节点名)
 - **某组候选地区**:改 `GROUPS_BUILD` 里的 `lists`
-- **规则覆盖面**:改 `CATEGORY_MAP` 对应的规则集列表
+- **规则覆盖面**:改 `CATEGORY_MAP`(进代理组)与 `DIRECT_SETS`(强制直连),规则集名见 [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat/tree/meta/geo/geosite)
 - **测速频率/容差**:改 `urlTest`
 
 ## 致谢
 
 - 规则集:[MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat)
+- 图标:[lige47/lige_icon](https://github.com/lige47/lige_icon)
 - 分组结构参考:[powerfullz/override-rules](https://github.com/powerfullz/override-rules)
-- 图标:[Koolson/Qure](https://github.com/Koolson/Qure)
 
 ## 免责声明
 
