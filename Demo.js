@@ -7,11 +7,11 @@
  * 组结构:
  *   1. 自动选择  url-test 自动测速(地区组间选最快 → 组内再选最快节点)
  *   2. 手动选择  select   手动挑节点(先地区组、后全部单节点;含未归类的冷门节点)
- *   3. AI服务    select   候选:美国 / 新加坡 / 日本 地区组
- *   4. 加密货币  select   候选:台湾 / 日本 / 新加坡 地区组
- *   5. 国内媒体  select   默认 DIRECT(可切手动/自动),国内视频站走它 = 直连
- *   6. 国外媒体  select   候选:香港 / 美国 / 台湾 / 日本 / 新加坡 地区组
- *   7. Apple     select   候选:DIRECT / 香港 / 美国 / 台湾 / 日本 / 新加坡(默认直连)
+ *   3. AI服务    select   自动/手动 → 美国 / 新加坡 / 日本 地区组
+ *   4. 加密货币  select   自动/手动 → 台湾 / 日本 / 新加坡 地区组
+ *   5. 国内媒体  select   默认 DIRECT(可切自动/手动),国内视频站走它 = 直连
+ *   6. 国外媒体  select   自动/手动 → 香港 / 美国 / 台湾 / 日本 / 新加坡 地区组
+ *   7. Apple     select   默认 DIRECT,可切自动/手动或各地区
  *   8. Final     select   兜底:自动 / 手动 / 各地区 / DIRECT,规则最后 MATCH 进它
  *   9. 地区分组  香港/台湾/日本/新加坡/韩国/美国节点(按节点名正则自动归类,空地区自动隐藏)
  *               未匹配任何地区的节点只出现在「手动选择」里,不再单独建组
@@ -41,7 +41,7 @@ function main(config) {
   /* ---------------- 一、可调参数 ---------------- */
   const urlTest = {
     url: 'https://cp.cloudflare.com',
-    interval: 300, // 秒;300 = 每5分钟测一次,别学模板的 60(每分钟测=频繁切节点=断流)
+    interval: 120, // 秒;节点挂掉最多2分钟内被剔除切换(太长=死节点上卡几分钟,太短=无谓抖动)
     tolerance: 100, // 毫秒;延迟差 <100ms 不切换
     lazy: true // 只在组被真正使用时测速
   }
@@ -56,13 +56,13 @@ function main(config) {
     { name: '美国节点', icon: '01Country/US.png', regex: /美国|美國|洛杉矶|圣何塞|西雅图|凤凰城|United ?States|America|\bUS\b|\bUSA\b|🇺🇸/i }
   ]
 
-  // 业务组候选(只填想放进去的地区组名;地区不存在时自动剔除;DIRECT 也可作为候选)
+  // 业务组候选(可填:地区组名 / 自动选择 / 手动选择 / DIRECT;地区不存在时自动剔除)
   const GROUPS_BUILD = [
-    { name: 'AI服务', icon: '04ProxySoft/chatgpt4.0.png', type: 'select', lists: ['美国节点', '新加坡节点', '日本节点'] },
-    { name: '加密货币', icon: '04ProxySoft/Bitcoin.png', type: 'select', lists: ['台湾节点', '日本节点', '新加坡节点'] },
-    { name: '国外媒体', icon: '05icon/play.png', type: 'select', lists: ['香港节点', '美国节点', '台湾节点', '日本节点', '新加坡节点'] },
-    { name: '国内媒体', icon: '03CNSoft/bilibili.png', type: 'select', lists: ['DIRECT', '手动选择', '自动选择'] },
-    { name: 'Apple', icon: '03CNSoft/apple.png', type: 'select', lists: ['DIRECT', '香港节点', '美国节点', '台湾节点', '日本节点', '新加坡节点'] }
+    { name: 'AI服务', icon: '04ProxySoft/chatgpt4.0.png', type: 'select', lists: ['自动选择', '手动选择', '美国节点', '新加坡节点', '日本节点'] },
+    { name: '加密货币', icon: '04ProxySoft/Bitcoin.png', type: 'select', lists: ['自动选择', '手动选择', '台湾节点', '日本节点', '新加坡节点'] },
+    { name: '国外媒体', icon: '05icon/play.png', type: 'select', lists: ['自动选择', '手动选择', '香港节点', '美国节点', '台湾节点', '日本节点', '新加坡节点'] },
+    { name: '国内媒体', icon: '03CNSoft/bilibili.png', type: 'select', lists: ['DIRECT', '自动选择', '手动选择'] },
+    { name: 'Apple', icon: '03CNSoft/apple.png', type: 'select', lists: ['DIRECT', '自动选择', '手动选择', '香港节点', '美国节点', '台湾节点', '日本节点', '新加坡节点'] }
   ]
   const FINAL_LISTS = ['自动选择', '手动选择', '香港节点', '台湾节点', '日本节点', '新加坡节点', '美国节点', 'DIRECT']
 
