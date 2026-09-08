@@ -46,6 +46,7 @@
 - **某组候选地区**：改 `GROUPS_BUILD` 里的 `lists`
 - **规则覆盖面**：改 `CATEGORY_MAP`（进代理组）与 `DIRECT_SETS`（强制直连），规则集名见 [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat/tree/meta/geo/geosite)
 - **测速频率/容差**：改 `urlTest`
+- **广告拦截**：改 `BLOCK_ADS`（默认关闭；true 时广告与跟踪域名直接拒绝，浏览更快更干净，个别站点可能异常）
 
 ## 致谢
 

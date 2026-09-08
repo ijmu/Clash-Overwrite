@@ -32,6 +32,7 @@
  *   - 某组的候选节点地区 → 改 GROUPS_BUILD 里对应 lists
  *   - 规则覆盖面 → 改 CATEGORY_MAP / DIRECT_SETS（规则集名见 MetaCubeX meta-rules-dat geosite 目录）
  *   - 测速频率 → 改 urlTest
+ *   - 广告拦截 → 改 BLOCK_ADS（默认关闭，true 时广告/跟踪域名直接拒绝，还能提速）
  */
 function main(config) {
   if (!config || typeof config !== 'object') return config
@@ -84,6 +85,8 @@ function main(config) {
     ['Microsoft', ['microsoft', 'bing']],
     ['GitHub', ['github']]
   ]
+  const BLOCK_ADS = false // true 时启用广告/跟踪拦截（category-ads-all + tracker → REJECT），个别站点可能异常
+
   // 无条件直连的规则集（苹果/微软国内服务、国内 AI），排在业务组规则之前
   const DIRECT_SETS = ['apple-cn', 'icloud@cn', 'category-ai-cn', 'microsoft@cn']
 
@@ -178,6 +181,11 @@ function main(config) {
     rules.push('RULE-SET,' + addRS(ns) + ',DIRECT')
   }
 
+  if (BLOCK_ADS) {
+    rules.push('RULE-SET,' + addRS('category-ads-all') + ',REJECT')
+    rules.push('RULE-SET,' + addRS('tracker') + ',REJECT')
+  }
+
   for (const [group, nsList] of CATEGORY_MAP) {
     for (const ns of nsList) {
       rules.push('RULE-SET,' + addRS(ns) + ',' + group)
@@ -215,9 +223,26 @@ function main(config) {
     'respect-rules': true
   }
 
+  /* ---------------- 六、域名嗅探（直连 IP 的应用也能精确命中规则） ---------------- */
+  const sniffer = {
+    enable: true,
+    'force-dns-mapping': true,
+    'parse-pure-ip': true,
+    'override-destination': false, // 不改写目标，避免个别证书固定的应用异常
+    sniff: {
+      TLS: { ports: [443, 8443] },
+      HTTP: { ports: [80, '8080-8880'] },
+      QUIC: { ports: [443, 8443] }
+    },
+    'skip-domain': ['+.push.apple.com']
+  }
+
   return Object.assign({}, config, {
     proxies: usable,
+    'unified-delay': true, // 延迟显示去掉握手耗时，更真实
     'tcp-concurrent': true, // 同时尝试 IPv4／IPv6 连接节点，选快的用
+    profile: { 'store-selected': true, 'store-fake-ip': true }, // 记住分组选择与 fake-ip 映射，重启不断连
+    sniffer: sniffer,
     'proxy-groups': orderedGroups,
     rules: rules,
     'rule-providers': providers,
