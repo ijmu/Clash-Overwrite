@@ -87,7 +87,7 @@ function main(config) {
   const hasOther = leftovers.length > 0
 
   /* ---------------- 三、组 = 区域组 + 业务组 ---------------- */
-  const nodeIcon = (n) => ({ name: n, icon: ICON + 'Star.png' }) // 单节点图标统一占位
+  // 注意:mihomo 内核 proxy-groups.proxies 只接受字符串数组,不能放 {name} 内联对象
 
   const regionGroupDefs = regionGroups.map((p) => ({
     name: p.name,
@@ -104,7 +104,7 @@ function main(config) {
   const manualList = regionGroups
     .map((p) => p.name)
     .concat(hasOther ? ['其他节点'] : [])
-    .concat(proxyNames.map((n) => ({ name: n })))
+    .concat(proxyNames)
 
   const groups = []
   groups.push({ name: '自动选择', icon: ICON + 'Auto.png', type: 'url-test', proxies: autoList, ...urlTest })
