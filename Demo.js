@@ -1,32 +1,33 @@
 /*
- * Demo.js —— 个人覆写模板(Clash Party / Mihomo Party 远程 JS 覆写)
+ * Demo.js —— 个人覆写模板（Clash Party / Mihomo Party 远程 JS 覆写）
  *
- * 用法:Clash Party → 覆写 → 新建 → 远程 → 填本文件的 GitHub raw 地址(raw.githubusercontent.com/.../Demo.js)
- *      订阅自动更新/覆写更新时,每次生成配置都会执行本脚本
+ * 用法：Clash Party → 覆写 → 新建 → 远程 → 填本文件的 GitHub raw 地址
+ *      （raw.githubusercontent.com/.../Demo.js）
+ *      订阅自动更新／覆写更新时，每次生成配置都会执行本脚本
  *
- * 组结构:
- *   1. 自动选择  url-test 自动测速(地区组间选最快 → 组内再选最快节点)
- *   2. 手动选择  select   手动挑节点(先地区组、后全部单节点;含未归类的冷门节点)
+ * 组结构：
+ *   1. 自动选择  url-test 自动测速（地区组间选最快 → 组内再选最快节点）
+ *   2. 手动选择  select   手动挑节点（先地区组、后全部单节点；含未归类的冷门节点）
  *   3. AI服务    select   自动/手动 → 美国 / 新加坡 / 日本 地区组
  *   4. 加密货币  select   自动/手动 → 台湾 / 日本 / 新加坡 地区组
- *   5. 国内媒体  select   默认 DIRECT(可切自动/手动),国内视频站走它 = 直连
+ *   5. 国内媒体  select   默认 DIRECT（可切自动/手动），国内视频站走它＝直连
  *   6. 国外媒体  select   自动/手动 → 香港 / 美国 / 台湾 / 日本 / 新加坡 地区组
- *   7. Apple     select   默认 DIRECT,可切自动/手动或各地区
- *   8. Final     select   兜底:自动 / 手动 / 各地区 / DIRECT,规则最后 MATCH 进它
- *   9. 地区分组  香港/台湾/日本/新加坡/韩国/美国节点(按节点名正则自动归类,空地区自动隐藏)
+ *   7. Apple     select   默认 DIRECT，可切自动/手动或各地区
+ *   8. Final     select   兜底：自动 / 手动 / 各地区 / DIRECT，规则最后 MATCH 进它
+ *   9. 地区分组  香港/台湾/日本/新加坡/韩国/美国节点（按节点名正则自动归类，空地区自动隐藏）
  *               未匹配任何地区的节点只出现在「手动选择」里,不再单独建组
  *
- * 规则顺序:局域网 → 苹果国内服务直连 → 国内AI直连 → 国内媒体 → Apple → AI服务 →
+ * 规则顺序：局域网 → 苹果国内服务直连 → 国内AI直连 → 国内媒体 → Apple → AI服务 →
  *         加密货币 → 国外媒体 → 中国大陆直连 → 兜底 Final
  *
- * AI 分流说明:采用 MetaCubeX 聚合规则集 category-ai-!cn(自动收录 OpenAI/Claude/Gemini/Grok/
- *             Perplexity/HuggingFace/Poe 等全部非国内 AI,上游每天更新),国内 AI(deepseek/qwen/kimi 等)
- *             走 category-ai-cn 直连,分流既全面又不误伤
+ * AI 分流说明：采用 MetaCubeX 聚合规则集 category-ai-!cn（自动收录 OpenAI/Claude/Gemini/Grok/
+ *             Perplexity/HuggingFace/Poe 等全部非国内 AI，上游每天更新），国内 AI（deepseek/qwen/kimi 等）
+ *             走 category-ai-cn 直连，分流既全面又不误伤
  *
- * 想改哪里:
+ * 想改哪里：
  *   - 加减地区 → 改 REGION_DEFS
  *   - 某组的候选节点地区 → 改 GROUPS_BUILD 里对应 lists
- *   - 规则覆盖面 → 改 CATEGORY_MAP / DIRECT_SETS(规则集名见 MetaCubeX meta-rules-dat geosite 目录)
+ *   - 规则覆盖面 → 改 CATEGORY_MAP / DIRECT_SETS（规则集名见 MetaCubeX meta-rules-dat geosite 目录）
  *   - 测速频率 → 改 urlTest
  */
 function main(config) {
@@ -41,12 +42,12 @@ function main(config) {
   /* ---------------- 一、可调参数 ---------------- */
   const urlTest = {
     url: 'https://cp.cloudflare.com',
-    interval: 120, // 秒;节点挂掉最多2分钟内被剔除切换(太长=死节点上卡几分钟,太短=无谓抖动)
-    tolerance: 100, // 毫秒;延迟差 <100ms 不切换
+    interval: 120, // 秒；节点挂掉最多 2 分钟内被剔除切换（太长会在死节点上卡几分钟，太短则无谓抖动）
+    tolerance: 100, // 毫秒；延迟差小于 100ms 不切换
     lazy: true // 只在组被真正使用时测速
   }
 
-  // 地区识别正则(按数组顺序匹配,先命中先归类)
+  // 地区识别正则（按数组顺序匹配，先命中先归类）
   const REGION_DEFS = [
     { name: '香港节点', icon: '01Country/Hongkong.png', regex: /香港|Hong ?Kong|\bHK\b|🇭🇰/i },
     { name: '台湾节点', icon: '01Country/taiwan.png', regex: /台湾|臺灣|Taiwan|\bTW\b|🇹🇼/i },
@@ -56,7 +57,7 @@ function main(config) {
     { name: '美国节点', icon: '01Country/US.png', regex: /美国|美國|洛杉矶|圣何塞|西雅图|凤凰城|United ?States|America|\bUS\b|\bUSA\b|🇺🇸/i }
   ]
 
-  // 业务组候选(可填:地区组名 / 自动选择 / 手动选择 / DIRECT;地区不存在时自动剔除)
+  // 业务组候选（可填：地区组名 / 自动选择 / 手动选择 / DIRECT；地区不存在时自动剔除）
   const GROUPS_BUILD = [
     { name: 'AI服务', icon: '04ProxySoft/chatgpt4.0.png', type: 'select', lists: ['自动选择', '手动选择', '美国节点', '新加坡节点', '日本节点'] },
     { name: '加密货币', icon: '04ProxySoft/Bitcoin.png', type: 'select', lists: ['自动选择', '手动选择', '台湾节点', '日本节点', '新加坡节点'] },
@@ -66,7 +67,7 @@ function main(config) {
   ]
   const FINAL_LISTS = ['自动选择', '手动选择', '香港节点', '台湾节点', '日本节点', '新加坡节点', '美国节点', 'DIRECT']
 
-  // 业务域规则:规则集名 → 进哪个组(MetaCubeX geosite 类别,缺哪个删哪行)
+  // 业务域规则：规则集名 → 进哪个组（MetaCubeX geosite 类别，缺哪个删哪行）
   const CATEGORY_MAP = [
     ['国内媒体', ['bilibili', 'iqiyi', 'youku']],
     ['Apple', ['apple', 'icloud']],
@@ -74,11 +75,11 @@ function main(config) {
     ['加密货币', ['category-cryptocurrency']],
     ['国外媒体', ['netflix', 'youtube', 'disney', 'primevideo', 'hbo', 'tiktok', 'spotify']]
   ]
-  // 无条件直连的规则集(苹果国内服务、国内 AI),排在业务组规则之前
+  // 无条件直连的规则集（苹果国内服务、国内 AI），排在业务组规则之前
   const DIRECT_SETS = ['apple-cn', 'icloud@cn', 'category-ai-cn']
 
   /* ---------------- 二、节点清洗与地区归类 ---------------- */
-  // 订阅附带的"剩余流量/套餐到期/官网"等信息条目不是真节点,剔除
+  // 订阅附带的“剩余流量／套餐到期／官网”等信息条目不是真节点，剔除
   const INFO_RE = /剩余|到期|重置|官网|套餐|流量|expire|traffic|电报|频道|群组/i
   const usable = config.proxies.filter((p) => p && p.name && !INFO_RE.test(p.name))
   if (usable.length === 0) {
@@ -89,12 +90,12 @@ function main(config) {
   for (const n of proxyNames) {
     const pool = pools.find((p) => p.regex.test(n))
     if (pool) pool.nodes.push(n)
-    // 未匹配任何地区的节点不建组,仅保留在手动选择里
+    // 未匹配任何地区的节点不建组，仅保留在手动选择里
   }
   const regionGroups = pools.filter((p) => p.nodes.length > 0)
 
   /* ---------------- 三、组 = 区域组 + 业务组 ---------------- */
-  // 注意:mihomo 内核 proxy-groups.proxies 只接受字符串数组,不能放 {name} 内联对象
+  // 注意：mihomo 内核 proxy-groups.proxies 只接受字符串数组，不能放 {name} 内联对象
 
   const regionGroupDefs = regionGroups.map((p) => ({
     name: p.name,
@@ -207,7 +208,7 @@ function main(config) {
 
   return Object.assign({}, config, {
     proxies: usable,
-    'tcp-concurrent': true, // 同时尝试 IPv4/IPv6 连接节点,选快的用
+    'tcp-concurrent': true, // 同时尝试 IPv4／IPv6 连接节点，选快的用
     'proxy-groups': orderedGroups,
     rules: rules,
     'rule-providers': providers,
