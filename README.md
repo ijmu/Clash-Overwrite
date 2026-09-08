@@ -28,10 +28,13 @@
 | 国外媒体 | select | 候选：自动 → 手动 → 香港 → 美国 → 台湾 → 日本 → 新加坡；分流：Netflix、YouTube、Disney、PrimeVideo、HBO、TikTok、Spotify |
 | 国内媒体 | select | 默认 DIRECT（B站、爱奇艺、优酷直连），可切自动/手动 |
 | Apple | select | 默认 DIRECT，可切自动/手动或各地区；分流：apple、icloud |
+| Google | select | 候选：自动 → 手动 → 香港 → 美国；分流：google（含 googleapis、gstatic 等，不含 YouTube） |
+| Microsoft | select | 默认 DIRECT，可切自动/手动或香港/美国；分流：microsoft、bing（微软国内服务 microsoft@cn 强制直连） |
+| GitHub | select | 候选：自动 → 手动 → 香港 → 美国；分流：github |
 | Final | select | 兜底：自动 / 手动 / 各地区 / DIRECT，规则最后 MATCH 进它 |
 | 地区分组 | url-test | 香港、台湾、日本、新加坡、韩国、美国，按节点名正则自动归类，空地区自动隐藏 |
 
-规则顺序：局域网直连 → 苹果国内服务、国内 AI 直连 → 国内媒体 → Apple → AI服务 → 加密货币 → 国外媒体 → 中国大陆直连 → Final 兜底
+规则顺序：局域网直连 → 苹果、微软国内服务、国内 AI 直连 → 国内媒体 → Apple → AI服务 → 加密货币 → 国外媒体 → Google → Microsoft → GitHub → 中国大陆直连 → Final 兜底
 
 国内 AI（DeepSeek、通义千问、Kimi 等）走 `category-ai-cn` 规则强制直连，不会被误分到 AI服务 组，不影响访问速度。
 

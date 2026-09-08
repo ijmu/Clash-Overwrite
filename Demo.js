@@ -13,12 +13,15 @@
  *   5. 国内媒体  select   默认 DIRECT（可切自动/手动），国内视频站走它＝直连
  *   6. 国外媒体  select   自动/手动 → 香港 / 美国 / 台湾 / 日本 / 新加坡 地区组
  *   7. Apple     select   默认 DIRECT，可切自动/手动或各地区
- *   8. Final     select   兜底：自动 / 手动 / 各地区 / DIRECT，规则最后 MATCH 进它
- *   9. 地区分组  香港/台湾/日本/新加坡/韩国/美国节点（按节点名正则自动归类，空地区自动隐藏）
+ *   8. Google    select   自动/手动 → 香港 / 美国 地区组
+ *   9. Microsoft select   默认 DIRECT，可切自动/手动或香港/美国
+ *  10. GitHub    select   自动/手动 → 香港 / 美国 地区组
+ *  11. Final     select   兜底：自动 / 手动 / 各地区 / DIRECT，规则最后 MATCH 进它
+ *  12. 地区分组  香港/台湾/日本/新加坡/韩国/美国节点（按节点名正则自动归类，空地区自动隐藏）
  *               未匹配任何地区的节点只出现在「手动选择」里，不再单独建组
  *
- * 规则顺序：局域网 → 苹果国内服务直连 → 国内AI直连 → 国内媒体 → Apple → AI服务 →
- *         加密货币 → 国外媒体 → 中国大陆直连 → 兜底 Final
+ * 规则顺序：局域网 → 苹果/微软国内服务、国内AI直连 → 国内媒体 → Apple → AI服务 →
+ *         加密货币 → 国外媒体 → Google → Microsoft → GitHub → 中国大陆直连 → 兜底 Final
  *
  * AI 分流说明：采用 MetaCubeX 聚合规则集 category-ai-!cn（自动收录 OpenAI/Claude/Gemini/Grok/
  *             Perplexity/HuggingFace/Poe 等全部非国内 AI，上游每天更新），国内 AI（deepseek/qwen/kimi 等）
@@ -63,7 +66,10 @@ function main(config) {
     { name: '加密货币', icon: '04ProxySoft/Bitcoin.png', type: 'select', lists: ['自动选择', '手动选择', '台湾节点', '日本节点', '新加坡节点'] },
     { name: '国外媒体', icon: '05icon/play.png', type: 'select', lists: ['自动选择', '手动选择', '香港节点', '美国节点', '台湾节点', '日本节点', '新加坡节点'] },
     { name: '国内媒体', icon: '03CNSoft/bilibili.png', type: 'select', lists: ['DIRECT', '自动选择', '手动选择'] },
-    { name: 'Apple', icon: '03CNSoft/apple.png', type: 'select', lists: ['DIRECT', '自动选择', '手动选择', '香港节点', '美国节点', '台湾节点', '日本节点', '新加坡节点'] }
+    { name: 'Apple', icon: '03CNSoft/apple.png', type: 'select', lists: ['DIRECT', '自动选择', '手动选择', '香港节点', '美国节点', '台湾节点', '日本节点', '新加坡节点'] },
+    { name: 'Google', icon: '04ProxySoft/google.png', type: 'select', lists: ['自动选择', '手动选择', '香港节点', '美国节点'] },
+    { name: 'Microsoft', icon: '03CNSoft/microsoft.png', type: 'select', lists: ['DIRECT', '自动选择', '手动选择', '香港节点', '美国节点'] },
+    { name: 'GitHub', icon: '04ProxySoft/github.png', type: 'select', lists: ['自动选择', '手动选择', '香港节点', '美国节点'] }
   ]
   const FINAL_LISTS = ['自动选择', '手动选择', '香港节点', '台湾节点', '日本节点', '新加坡节点', '美国节点', 'DIRECT']
 
@@ -73,10 +79,13 @@ function main(config) {
     ['Apple', ['apple', 'icloud']],
     ['AI服务', ['category-ai-!cn']],
     ['加密货币', ['category-cryptocurrency']],
-    ['国外媒体', ['netflix', 'youtube', 'disney', 'primevideo', 'hbo', 'tiktok', 'spotify']]
+    ['国外媒体', ['netflix', 'youtube', 'disney', 'primevideo', 'hbo', 'tiktok', 'spotify']],
+    ['Google', ['google']],
+    ['Microsoft', ['microsoft', 'bing']],
+    ['GitHub', ['github']]
   ]
-  // 无条件直连的规则集（苹果国内服务、国内 AI），排在业务组规则之前
-  const DIRECT_SETS = ['apple-cn', 'icloud@cn', 'category-ai-cn']
+  // 无条件直连的规则集（苹果/微软国内服务、国内 AI），排在业务组规则之前
+  const DIRECT_SETS = ['apple-cn', 'icloud@cn', 'category-ai-cn', 'microsoft@cn']
 
   /* ---------------- 二、节点清洗与地区归类 ---------------- */
   // 订阅附带的“剩余流量／套餐到期／官网”等信息条目不是真节点，剔除
