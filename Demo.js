@@ -6,7 +6,7 @@
  *      订阅自动更新／覆写更新时，每次生成配置都会执行本脚本
  *
  * 组结构：
- *   1. 自动选择  url-test 自动测速（地区组间选最快 → 组内再选最快节点）
+ *   1. 自动选择  url-test 自动测速（地区组间选最快 → 组内再选最快节点，60s 测速 / 失败即重选）
  *   2. 手动选择  select   手动挑节点（先地区组、后全部单节点；含未归类的冷门节点）
  *   3. AI服务    select   自动/手动 → 美国 / 新加坡 / 日本 地区组
  *   4. 加密货币  select   自动/手动 → 台湾 / 日本 / 新加坡 地区组
@@ -46,7 +46,8 @@ function main(config) {
   /* ---------------- 一、可调参数 ---------------- */
   const urlTest = {
     url: 'https://cp.cloudflare.com',
-    interval: 120, // 秒；节点挂掉最多 2 分钟内被剔除切换（太长会在死节点上卡几分钟，太短则无谓抖动）
+    interval: 60, // 秒；节点挂掉最多 1 分钟内被剔除切换
+    'max-failed-times': 1, // 健康检查失败 1 次就立即触发全组重选，不等下一轮
     tolerance: 100, // 毫秒；延迟差小于 100ms 不切换
     lazy: true // 只在组被真正使用时测速
   }
@@ -203,7 +204,13 @@ function main(config) {
     'enhanced-mode': 'fake-ip',
     'fake-ip-range': '198.18.0.1/16',
     'prefer-h3': false,
-    nameserver: ['223.5.5.5', '119.29.29.29', 'system'],
+    nameserver: ['223.5.5.5', '119.29.29.29'], // 公共域名只用公共 DNS；由器 DNS 有广告劫持（解析到 127.0.0.1），不能混用
+    'nameserver-policy': {
+      '+.lan': 'system',
+      '+.local': 'system',
+      '+.localdomain': 'system',
+      '+.home.arpa': 'system'
+    }, // 仅局域网域名交给路由器解析
     fallback: ['https://dns.cloudflare.com/dns-query', 'https://dns.google/dns-query'],
     'fallback-filter': { geoip: true, 'geoip-code': 'CN' },
     'default-nameserver': ['223.5.5.5', '119.29.29.29'],
