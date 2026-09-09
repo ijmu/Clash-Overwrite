@@ -21,7 +21,8 @@
  *               未匹配任何地区的节点只出现在「手动选择」里，不再单独建组
  *
  * 规则顺序：局域网 → 苹果/微软国内服务、国内AI直连 → 国内媒体 → Apple → AI服务 →
- *         加密货币 → 国外媒体 → Google → Microsoft → GitHub → 中国大陆直连 → 兜底 Final
+ *         加密货币 → 国外媒体 → Google → GitHub → Microsoft → 中国大陆直连 → 兜底 Final
+ *         （GitHub 必须在 Microsoft 之前：microsoft 规则集含 github，否则会被吞进直连）
  *
  * AI 分流说明：采用 MetaCubeX 聚合规则集 category-ai-!cn（自动收录 OpenAI/Claude/Gemini/Grok/
  *             Perplexity/HuggingFace/Poe 等全部非国内 AI，上游每天更新），国内 AI（deepseek/qwen/kimi 等）
@@ -83,8 +84,10 @@ function main(config) {
     ['加密货币', ['category-cryptocurrency']],
     ['国外媒体', ['netflix', 'youtube', 'disney', 'primevideo', 'hbo', 'tiktok', 'spotify']],
     ['Google', ['google']],
-    ['Microsoft', ['microsoft', 'bing']],
-    ['GitHub', ['github']]
+    // 注意：GitHub 必须排在 Microsoft 之前！v2fly 的 microsoft 大类包含 github（微软收购），
+    // 若 microsoft 在前，github.com 会被吞进 Microsoft 组（默认直连）导致无法访问
+    ['GitHub', ['github']],
+    ['Microsoft', ['microsoft', 'bing']]
   ]
   const BLOCK_ADS = false // true 时启用广告/跟踪拦截（category-ads-all + tracker → REJECT），个别站点可能异常
 
