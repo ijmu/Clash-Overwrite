@@ -21,7 +21,7 @@
 
 | 组 | 类型 | 说明 |
 |---|---|---|
-| 自动选择 | url-test | 候选为各地区组，组内再自动选最快节点（60s 测速 / 100ms 容差 / lazy / 失败即重选） |
+| 自动选择 | url-test | 候选为各地区组，组内再自动选最快节点（300s 测速 / 200ms 容差 / lazy / 失败即重选） |
 | 手动选择 | select | 先地区组、后全部单节点（含未归类节点） |
 | AI服务 | select | 候选：自动 → 手动 → 美国 → 新加坡 → 日本；分流：`category-ai-!cn` 聚合规则，自动覆盖 OpenAI、Claude、Gemini、Grok、Perplexity、HuggingFace 等全部境外 AI，上游每日更新 |
 | 加密货币 | select | 候选：自动 → 手动 → 台湾 → 日本 → 新加坡；分流：category-cryptocurrency |
