@@ -20,7 +20,7 @@
  *  12. 地区分组  香港/台湾/日本/新加坡/韩国/美国节点（按节点名正则自动归类，空地区自动隐藏）
  *               未匹配任何地区的节点只出现在「手动选择」里，不再单独建组
  *
- * 规则顺序：局域网 → jsdelivr 直连（规则集/图标下载不占代理） → 苹果/微软国内服务、国内AI直连 → 国内媒体 → Apple → AI服务 →
+ * 规则顺序：局域网 → jsdelivr/Cloudflare R2 直连（下载不占代理） → 苹果/微软国内服务、国内AI直连 → 国内媒体 → Apple → AI服务 →
  *         加密货币 → 国外媒体 → Google → GitHub → Microsoft → 中国大陆直连 → 兜底 Final
  *         （GitHub 必须在 Microsoft 之前：microsoft 规则集含 github，否则会被吞进直连）
  *
@@ -182,9 +182,12 @@ function main(config) {
   rules.push('RULE-SET,' + addRS('private') + ',DIRECT')
   rules.push('RULE-SET,' + addGeo('private') + ',DIRECT,no-resolve')
 
-  // 规则集与图标的 CDN 强制直连：mihomo 下载规则集默认也走代理，节点拥塞时更新会失败；
-  // jsdelivr 有国内 PoP，直连实测稳定且更快
+  // 规则集/图标 CDN 与 Cloudflare 存储桶强制直连：
+  // 1) jsdelivr 有国内 PoP，直连稳定且更快，规则集更新不再受节点拥塞影响
+  // 2) r2.dev / cloudflare-r2.com 是 CF 对象存储公共域名，直连后下载速度不再受机场带宽/限流牵连
   rules.push('DOMAIN-SUFFIX,jsdelivr.net,DIRECT')
+  rules.push('DOMAIN-SUFFIX,r2.dev,DIRECT')
+  rules.push('DOMAIN-SUFFIX,cloudflare-r2.com,DIRECT')
 
   for (const ns of DIRECT_SETS) {
     rules.push('RULE-SET,' + addRS(ns) + ',DIRECT')
