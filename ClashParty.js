@@ -56,6 +56,7 @@
  *   Google
  *   GitHub
  *   Microsoft
+ *   腾讯系直连（微信头像 / 图片等）
  *   中国大陆
  *   Final
  */
@@ -773,6 +774,25 @@ function main(config) {
   /* ============================================================
    * 二十三、中国大陆直连
    * ============================================================ */
+
+  /*
+   * 腾讯系域名显式直连。
+   *
+   * geosite-cn 不包含以下腾讯自有域名：
+   *   qlogo.cn      微信头像
+   *   qpic.cn       聊天图片 / 朋友圈图片
+   *   gtimg.cn      静态资源
+   *   wechatpay.cn  微信支付
+   *
+   * 缺失时这些流量会命中 MATCH,Final 走代理，
+   * 腾讯 CDN 对境外出口拒绝或挂起，
+   * 表现为微信群聊头像无法显示。
+   */
+  rules.push(
+    'RULE-SET,' +
+    addRuleSet('tencent') +
+    ',DIRECT'
+  )
 
   rules.push(
     'RULE-SET,' +

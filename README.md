@@ -26,6 +26,7 @@ Clash-Overwrite/
 * 国内外流媒体分流
 * Apple / Google / Microsoft / GitHub 独立分流
 * 中国大陆流量直连
+* 腾讯系域名直连（修复微信群头像 / 聊天图片加载）
 * Fake-IP DNS
 * 国内 DNS + 国外 DoH Fallback
 * DNS Respect Rules
@@ -703,6 +704,29 @@ Final
 
 ---
 
+# 微信头像与腾讯系直连
+
+微信头像、聊天图片使用的域名并不全部在 `geosite-cn` 内：
+
+```text
+qlogo.cn      微信头像
+qpic.cn       聊天图片 / 朋友圈图片
+gtimg.cn      静态资源
+wechatpay.cn  微信支付
+```
+
+这些域名属于 `geosite-tencent`。如果缺少显式直连规则，它们会命中 `MATCH,Final` 走代理，而腾讯 CDN 对境外出口 IP 经常拒绝或长时间挂起，典型表现为微信群聊头像无法显示。
+
+两个脚本均已在中国大陆规则之前加入：
+
+```yaml
+RULE-SET,geosite-tencent,DIRECT
+```
+
+无需修改 `fake-ip-filter`，域名直连时 Mihomo 会在建连阶段完成真实解析。
+
+---
+
 # 规则顺序
 
 当前主要匹配顺序：
@@ -733,6 +757,8 @@ Google
 GitHub
 ↓
 Microsoft
+↓
+腾讯系直连
 ↓
 中国大陆
 ↓
