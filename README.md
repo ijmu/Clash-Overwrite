@@ -725,6 +725,14 @@ RULE-SET,geosite-tencent,DIRECT
 
 无需修改 `fake-ip-filter`，域名直连时 Mihomo 会在建连阶段完成真实解析。
 
+## IPv6 黑洞
+
+物理网络没有公网 IPv6 时，如果客户端接管配置开启 IPv6，TUN 会接管 IPv6 默认路由。微信 4.x 通过 HTTPDNS 直接获取 IPv6 地址并连接 443 / 8000 等端口，这些流量进入 TUN 后无法从物理网卡拨出，日志中表现为海量 `connectex: unreachable network`，头像、朋友圈等重度使用 IPv6 的功能反复重试失败。
+
+脚本已强制顶层 `ipv6: false`，使系统在 IPv4 上正常回退。
+
+注意 Mihomo Party 的接管配置优先级高于覆写脚本，需在 接管配置 中同步确认 `ipv6: false`。
+
 ---
 
 # 规则顺序

@@ -1065,6 +1065,22 @@ function main(config) {
       proxies: usable,
 
       /*
+       * 顶层 IPv6 关闭。
+       *
+       * 物理网络没有公网 IPv6 时，
+       * TUN 接管 IPv6 默认路由会形成黑洞：
+       * 微信等客户端通过 HTTPDNS 拿到 IPv6 地址后
+       * 全部进入 TUN 且无法拨出，
+       * 头像、朋友圈等流量反复重试失败。
+       *
+       * 关闭后系统在 IPv4 上正常回退。
+       *
+       * 注意：Mihomo Party 接管配置优先级更高，
+       * 需在 接管配置 中同步保持 ipv6: false。
+       */
+      ipv6: false,
+
+      /*
        * 统一延迟计算逻辑。
        */
       'unified-delay': true,
