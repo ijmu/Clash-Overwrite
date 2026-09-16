@@ -1,75 +1,58 @@
 # Clash-Overwrite
 
-个人使用的 Clash Party / Mihomo Party / FlClash 覆写脚本。
+适用于 **Clash Party / Mihomo Party / FlClash** 的个人 Mihomo 覆写脚本。
 
-当前仓库包含：
+当前提供两套配置：
 
 ```text
-Clash-Overwrite
-├── Demo.js
-├── FlClash.js
+Clash-Overwrite/
+├── ClashParty.js    # Clash Party / Mihomo Party
+├── FlClash.js       # FlClash
 └── README.md
 ```
 
-其中：
+两份脚本采用基本一致的分流规则，并针对 Clash Party 与 FlClash 的配置加载方式分别优化。
 
-```text
-Demo.js
-适用于 Clash Party / Mihomo Party
-
-FlClash.js
-适用于 FlClash
-```
-
-两份脚本使用基本一致的分流规则，但针对不同客户端采用不同的节点加载方式。
-
-> 本仓库不提供任何节点、机场或订阅服务，仅用于个人学习、网络配置整理和 Mihomo 配置研究。
+> 本仓库不提供任何节点、机场或订阅服务，仅用于个人学习、Mihomo 配置研究与网络配置整理。
 
 ## 功能
 
-主要功能包括：
+主要包含：
+
+* 自动节点测速与选择
+* 香港、台湾、日本、新加坡、韩国、美国自动分组
+* AI 服务独立分流
+* 加密货币 / Web3 独立分流
+* 国内外流媒体分流
+* Apple / Google / Microsoft / GitHub 独立分流
+* 中国大陆流量直连
+* Fake-IP DNS
+* 国内 DNS + 国外 DoH Fallback
+* DNS Respect Rules
+* Sniffer 域名嗅探
+* TCP Concurrent
+* Fake-IP 持久化
+* MetaCubeX MRS 规则集
+* 规则集自动更新
+* 自动过滤机场流量、到期时间等信息节点
+
+---
+
+# Clash Party
+
+使用文件：
 
 ```text
-自动节点测速
-地区自动分组
-AI 服务分流
-加密货币服务分流
-国内外媒体分流
-Apple 分流
-Google 分流
-Microsoft 分流
-GitHub 分流
-中国大陆直连
-Fake-IP DNS
-DNS fallback
-Sniffer 域名嗅探
-TCP Concurrent
-规则集自动更新
-```
-
-使用的核心规则来源：
-
-```text
-MetaCubeX/meta-rules-dat
-```
-
-规则格式采用 Mihomo 支持的 MRS。
-
-## Clash Party
-
-使用：
-
-```text
-Demo.js
+ClashParty.js
 ```
 
 远程地址：
 
 ```text
-https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/Demo.js
+https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/ClashParty.js
 ```
 
-### 添加方法
+## 添加方法
 
 进入：
 
@@ -77,30 +60,27 @@ https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/Demo.js
 Clash Party
 → 覆写
 → 新建
-→ 远程覆写
-```
-
-类型选择：
-
-```text
-JavaScript
+→ 类型：远程
+→ 格式：JavaScript
 ```
 
 填入：
 
 ```text
-https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/Demo.js
+https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/ClashParty.js
 ```
 
-保存并启用。
+保存并开启全局覆写。
 
-订阅更新后，脚本会重新生成 Mihomo 配置。
+订阅更新后，脚本会根据当前节点重新生成 Mihomo 配置。
 
-如果同时使用其他全局覆写脚本，可能产生策略组或规则冲突，建议只保留一套主要覆写。
+> 如果同时启用其他全局覆写、订阅转换脚本或 DNS 覆写，可能出现策略组、规则或 DNS 相互覆盖的问题。
 
-## FlClash
+---
 
-使用：
+# FlClash
+
+使用文件：
 
 ```text
 FlClash.js
@@ -112,84 +92,95 @@ FlClash.js
 https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/FlClash.js
 ```
 
-### 添加方法
+## 添加方法
 
-进入 FlClash 的配置覆写或 Script 功能。
-
-添加 JavaScript 脚本：
+进入 FlClash 的 Script / Override 功能，将：
 
 ```text
 https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/FlClash.js
 ```
 
-然后将该脚本作为订阅配置的 Script Override 使用。
+作为 JavaScript 覆写脚本使用。
 
-建议 FlClash 内：
+推荐客户端设置：
 
 ```text
 DNS 覆写：关闭
-
 追加系统 DNS：关闭
-
 IPv6：关闭
-
 运行模式：Rule
 ```
 
-DNS 由 `FlClash.js` 统一管理，避免客户端再次修改 DNS 配置。
+`FlClash.js` 已经完整配置 DNS，建议避免 FlClash 再次修改脚本生成的 DNS 配置。
 
-## Clash Party 与 FlClash 的区别
+---
 
-### Clash Party
+# ClashParty.js 与 FlClash.js 的区别
 
-`Demo.js` 会读取订阅中已经展开的：
+## ClashParty.js
 
-```text
+Clash Party 版本主要读取：
+
+```javascript
 config.proxies
 ```
 
-然后自动分析节点名称并生成地区策略组。
-
-适合 Clash Party / Mihomo Party 的覆写运行方式。
-
-### FlClash
-
-`FlClash.js` 优先使用 Mihomo 原生：
+脚本分析订阅展开后的具体节点名称，然后：
 
 ```text
-include-all
-filter
-exclude-filter
+读取节点
+↓
+过滤机场信息节点
+↓
+识别节点地区
+↓
+生成地区组
+↓
+生成业务策略组
+↓
+写入规则与 DNS
 ```
 
-自动读取：
+没有对应节点的地区组会自动隐藏。
+
+## FlClash.js
+
+FlClash 版本主要利用 Mihomo 原生：
+
+```yaml
+include-all: true
+filter:
+exclude-filter:
+```
+
+动态加载：
 
 ```text
 proxies
 proxy-providers
 ```
 
-因此机场后续增加或删除节点时，一般无需修改脚本。
+因此机场增加或删除节点后，Mihomo 可以自动将节点纳入对应策略组。
 
-## 策略组
+---
 
-默认生成：
+# 策略组
 
-| 策略组       | 类型       | 用途                                     |
-| --------- | -------- | -------------------------------------- |
-| 自动选择      | url-test | 从全部真实节点中自动选择延迟较优节点                     |
-| 手动选择      | select   | 手动选择地区或具体节点                            |
-| AI服务      | select   | OpenAI、Claude、Gemini、Grok、Perplexity 等 |
-| 加密货币      | select   | Crypto / Exchange / Web3               |
-| 国外媒体      | select   | YouTube、Netflix、Disney、HBO、Spotify 等   |
-| 国内媒体      | select   | Bilibili、爱奇艺、优酷                        |
-| Apple     | select   | Apple / iCloud                         |
-| Google    | select   | Google 服务                              |
-| Microsoft | select   | Microsoft / Bing                       |
-| GitHub    | select   | GitHub                                 |
-| Final     | select   | 未匹配流量最终出口                              |
+| 策略组       | 类型       | 用途                                      |
+| --------- | -------- | --------------------------------------- |
+| 自动选择      | url-test | 从所有真实节点直接选择延迟较优节点                       |
+| 手动选择      | select   | 手动选择地区组或具体节点                            |
+| AI服务      | select   | ChatGPT、Claude、Gemini、Grok、Perplexity 等 |
+| 加密货币      | select   | Crypto、交易所、Web3 服务                      |
+| 国外媒体      | select   | YouTube、Netflix、Disney+、HBO、Spotify 等   |
+| 国内媒体      | select   | Bilibili、爱奇艺、优酷                         |
+| Apple     | select   | Apple / iCloud                          |
+| Google    | select   | Google 服务                               |
+| Microsoft | select   | Microsoft / Bing                        |
+| GitHub    | select   | GitHub                                  |
+| Final     | select   | 未匹配流量最终出口                               |
 
-地区组默认包括：
+地区组：
 
 ```text
 香港节点
@@ -200,48 +191,13 @@ proxy-providers
 美国节点
 ```
 
-地区通过节点名称自动识别。
+节点根据名称中的国家、地区、缩写和 Emoji 自动识别。
 
-## 自动测速
+---
 
-当前默认参数：
+# 自动选择
 
-```yaml
-interval: 300
-timeout: 3000
-tolerance: 150
-lazy: true
-max-failed-times: 2
-```
-
-含义：
-
-```text
-300 秒进行一次自动测速
-
-测速超时 3000ms
-
-节点延迟差距小于 150ms 时尽量保持当前节点
-
-策略组实际使用时才执行测速
-
-连续失败达到阈值后重新判断节点
-```
-
-该设置主要考虑：
-
-```text
-减少频繁节点切换
-降低机场瞬时抖动影响
-减少 Wi-Fi / 移动网络波动导致的断流
-兼顾故障节点恢复速度
-```
-
-## 自动选择逻辑
-
-新版自动选择直接测试真实节点。
-
-结构：
+当前版本的 `自动选择` 直接测试所有真实节点：
 
 ```text
 自动选择
@@ -249,67 +205,128 @@ max-failed-times: 2
 所有真实节点
 ```
 
-地区组独立工作：
+地区策略组则独立工作：
 
 ```text
 香港节点
     ↓
-香港真实节点
+所有香港节点
 
 日本节点
     ↓
-日本真实节点
+所有日本节点
+
+美国节点
+    ↓
+所有美国节点
 ```
 
-这样避免：
+因此不会形成：
 
 ```text
 自动选择
-→ 地区 url-test
-→ 具体节点 url-test
+↓
+地区 url-test
+↓
+节点 url-test
 ```
 
-形成双层测速。
+这种双层自动测速结构。
 
-## DNS
+---
 
-当前使用：
+# 自动测速参数
+
+当前默认：
+
+```yaml
+url: https://www.gstatic.com/generate_204
+expected-status: 204
+
+interval: 300
+timeout: 3000
+tolerance: 150
+lazy: true
+max-failed-times: 2
+```
+
+参数说明：
+
+| 参数               |    当前值 | 作用              |
+| ---------------- | -----: | --------------- |
+| interval         |   300s | 每 5 分钟测速        |
+| timeout          | 3000ms | 单节点测速超时         |
+| tolerance        |  150ms | 减少小幅延迟变化导致的节点切换 |
+| lazy             |   true | 策略组实际使用时才执行周期测速 |
+| max-failed-times |      2 | 减少单次网络抖动触发重选    |
+| expected-status  |    204 | 检查测速服务器返回状态     |
+
+这套参数主要平衡：
+
+```text
+节点速度
++
+节点稳定性
++
+故障恢复
++
+减少频繁切换
+```
+
+---
+
+# DNS
+
+当前采用：
 
 ```text
 Fake-IP
-IPv6 关闭
++
 国内公共 DNS
-国外 DoH fallback
-DNS respect-rules
-proxy-server-nameserver
-Fake-IP 持久化
-ARC DNS Cache
++
+国外 DoH Fallback
++
+DNS Respect Rules
 ```
 
-默认国内 DNS：
+## 国内 DNS
 
 ```text
 223.5.5.5
 119.29.29.29
 ```
 
-Fallback：
+主要用于正常 DNS 查询以及机场节点域名解析。
+
+## 国外 Fallback DNS
 
 ```text
 Cloudflare DoH
 Google DoH
 ```
 
-机场节点域名解析使用：
+用于满足 Fallback 条件的查询。
+
+## 节点 DNS
+
+`proxy-server-nameserver`：
 
 ```text
 223.5.5.5
 119.29.29.29
 ```
 
-没有加入 `system`，尽量减少不同系统 DNS 环境导致的解析差异。
+这里没有混入：
 
-## DNS Fallback
+```text
+system
+```
+
+用于减少不同操作系统、路由器或网络环境 DNS 不一致造成的解析波动。
+
+---
+
+# DNS Fallback
 
 开启：
 
@@ -317,19 +334,27 @@ Google DoH
 fallback-lazy-query: true
 ```
 
-正常情况下优先使用主 DNS。
-
-当解析结果满足 fallback 条件时，再使用境外 DoH。
-
-主要目的：
+基本逻辑：
 
 ```text
-降低额外 DNS 请求
-减少不同 DNS 同时返回造成的结果波动
-降低移动网络下 DNS 请求开销
+域名请求
+↓
+国内 DNS
+↓
+检查解析结果
+↓
+正常结果
+→ 使用当前结果
+
+满足 Fallback 条件
+→ Cloudflare / Google DoH
 ```
 
-## Fake-IP
+这样可以减少不必要的境外 DNS 查询。
+
+---
+
+# Fake-IP
 
 启用：
 
@@ -337,26 +362,47 @@ fallback-lazy-query: true
 enhanced-mode: fake-ip
 ```
 
-Fake-IP 网段：
+Fake-IP 地址池：
 
 ```text
 198.18.0.1/16
 ```
 
-并排除部分：
+同时开启：
+
+```yaml
+store-fake-ip: true
+```
+
+用于保存 Fake-IP 映射，提高客户端重启后的连续性。
+
+部分特殊服务会排除 Fake-IP，例如：
 
 ```text
-局域网域名
+LAN / Local
 NTP
 STUN
-Apple 特殊服务
+Apple 部分服务
+Microsoft 网络检测
 部分国内影音服务
 部分 IoT 服务
 ```
 
-以提高兼容性。
+---
 
-## Sniffer
+# DNS Cache
+
+启用：
+
+```yaml
+cache-algorithm: arc
+```
+
+用于 Mihomo DNS 缓存管理。
+
+---
+
+# Sniffer
 
 默认开启：
 
@@ -366,26 +412,29 @@ HTTP
 QUIC
 ```
 
-用于从连接中识别真实域名，提高规则命中率。
+主要作用是从连接中识别域名，提高规则匹配能力。
 
-同时使用较保守的：
+当前使用：
 
 ```yaml
+force-dns-mapping: true
+parse-pure-ip: true
 override-destination: false
 ```
 
-降低部分：
+`override-destination` 保持关闭，配置相对保守，可以减少部分特殊 App、游戏或证书固定应用的兼容性问题。
+
+Apple Push：
 
 ```text
-银行 App
-游戏
-证书固定 App
-特殊网络程序
++.push.apple.com
 ```
 
-出现兼容性问题的概率。
+默认跳过 Sniffer。
 
-## TCP Concurrent
+---
+
+# TCP Concurrent
 
 开启：
 
@@ -393,18 +442,281 @@ override-destination: false
 tcp-concurrent: true
 ```
 
-当 DNS 返回多个 IP 时，Mihomo 可以并发尝试建立 TCP 连接，并优先使用较快建立成功的地址。
+一个域名解析得到多个 IP 时，Mihomo 可以并发尝试建立 TCP 连接，并采用较快建立成功的地址。
 
-对部分 CDN 和多 IP 服务可以改善首连速度。
+对 CDN、多 IP 域名的首连速度可能有所改善。
 
-## 规则顺序
+同时开启：
 
-主要顺序：
+```yaml
+unified-delay: true
+```
+
+统一节点延迟计算方式。
+
+---
+
+# AI 服务
+
+境外 AI 使用：
+
+```text
+category-ai-!cn
+```
+
+根据 MetaCubeX 上游规则自动覆盖相关 AI 服务，例如：
+
+```text
+OpenAI
+ChatGPT
+Claude
+Gemini
+Grok
+Perplexity
+Poe
+HuggingFace
+```
+
+实际覆盖范围以 MetaCubeX 当前规则为准。
+
+默认候选：
+
+```text
+自动选择
+美国节点
+新加坡节点
+日本节点
+手动选择
+```
+
+对于 ChatGPT、Claude、Gemini 等账号型服务，更推荐长期使用稳定的固定出口，减少国家和 IP 频繁变化。
+
+---
+
+# 国内 AI
+
+使用：
+
+```text
+category-ai-cn
+```
+
+强制：
+
+```text
+DIRECT
+```
+
+主要用于中国大陆 AI 服务。
+
+具体覆盖范围由 MetaCubeX 上游规则维护。
+
+---
+
+# 加密货币
+
+使用：
+
+```text
+category-cryptocurrency
+```
+
+用于匹配：
+
+```text
+加密货币交易所
+行情网站
+Crypto 服务
+Web3 服务
+```
+
+默认候选：
+
+```text
+自动选择
+台湾节点
+日本节点
+新加坡节点
+手动选择
+```
+
+具体覆盖范围取决于 MetaCubeX 上游规则。
+
+---
+
+# 国外媒体
+
+独立分流：
+
+```text
+Netflix
+YouTube
+Disney+
+Prime Video
+HBO
+TikTok
+Spotify
+```
+
+默认可在：
+
+```text
+自动选择
+香港
+美国
+台湾
+日本
+新加坡
+手动选择
+```
+
+之间切换。
+
+对于存在地区版权限制的服务，可以手动固定对应地区。
+
+---
+
+# 国内媒体
+
+当前包括：
+
+```text
+Bilibili
+爱奇艺
+优酷
+```
+
+默认：
+
+```text
+DIRECT
+```
+
+也可以手动切换代理。
+
+---
+
+# Apple
+
+中国大陆 Apple 相关规则优先：
+
+```text
+DIRECT
+```
+
+例如：
+
+```text
+apple-cn
+icloud@cn
+```
+
+其他 Apple / iCloud 流量进入：
+
+```text
+Apple
+```
+
+策略组。
+
+Apple 策略组默认优先 DIRECT。
+
+---
+
+# Google
+
+Google 服务进入：
+
+```text
+Google
+```
+
+策略组。
+
+YouTube 已提前进入：
+
+```text
+国外媒体
+```
+
+策略组。
+
+---
+
+# GitHub
+
+GitHub 使用独立：
+
+```text
+GitHub
+```
+
+策略组。
+
+GitHub 规则位于 Microsoft 规则之前，减少部分相关域名被 Microsoft 大类提前匹配的情况。
+
+---
+
+# Microsoft
+
+中国大陆 Microsoft 服务：
+
+```text
+microsoft@cn
+```
+
+强制：
+
+```text
+DIRECT
+```
+
+其他：
+
+```text
+Microsoft
+Bing
+```
+
+进入 `Microsoft` 策略组。
+
+默认优先 DIRECT，也可以手动切换代理。
+
+---
+
+# 中国大陆流量
+
+业务规则匹配完成后，使用：
+
+```text
+geosite-cn
+geoip-cn
+```
+
+处理中国大陆流量。
+
+默认：
+
+```text
+DIRECT
+```
+
+未匹配任何规则的连接最终进入：
+
+```text
+Final
+```
+
+---
+
+# 规则顺序
+
+当前主要匹配顺序：
 
 ```text
 局域网
 ↓
-规则 CDN
+规则/CDN
 ↓
 Apple 中国大陆服务
 ↓
@@ -433,192 +745,41 @@ Microsoft
 Final
 ```
 
-顺序会影响匹配结果，因此建议不要随意调整。
+规则遵循从上到下匹配，因此顺序会影响最终分流结果。
 
-## AI 分流
+---
 
-境外 AI 使用：
+# 机场信息节点过滤
 
-```text
-category-ai-!cn
-```
-
-主要覆盖：
+脚本会过滤常见机场信息节点，例如名称中包含：
 
 ```text
-OpenAI
-ChatGPT
-Claude
-Gemini
-Grok
-Perplexity
-Poe
-HuggingFace
+剩余
+流量
+到期
+重置
+官网
+套餐
+电报
+频道
+群组
+expire
+traffic
 ```
 
-具体覆盖范围取决于 MetaCubeX 上游规则。
-
-国内 AI 使用：
-
-```text
-category-ai-cn
-```
-
-强制 DIRECT。
-
-例如：
-
-```text
-DeepSeek
-通义千问
-Kimi
-```
-
-因此不会因为 AI 大类规则而全部走代理。
-
-## AI 节点建议
-
-AI 服务默认支持：
+防止这些伪节点进入：
 
 ```text
 自动选择
-美国节点
-新加坡节点
-日本节点
-手动选择
+地区测速
+手动节点列表
 ```
 
-对于 ChatGPT、Claude、Gemini 等账号型服务，更建议长期固定一个质量稳定的出口节点。
+---
 
-频繁切换国家或出口 IP 可能影响登录状态或风控判断。
+# 广告拦截
 
-## 加密货币
-
-使用：
-
-```text
-category-cryptocurrency
-```
-
-主要用于：
-
-```text
-交易所
-行情网站
-Crypto 服务
-Web3 服务
-```
-
-默认可选择：
-
-```text
-自动选择
-台湾
-日本
-新加坡
-手动选择
-```
-
-具体域名覆盖范围由 MetaCubeX 上游规则维护。
-
-## 国外媒体
-
-目前包括：
-
-```text
-Netflix
-YouTube
-Disney+
-Prime Video
-HBO
-TikTok
-Spotify
-```
-
-可以根据实际解锁情况手动指定地区。
-
-## 国内媒体
-
-包括：
-
-```text
-Bilibili
-爱奇艺
-优酷
-```
-
-默认：
-
-```text
-DIRECT
-```
-
-## Apple
-
-Apple 中国大陆相关服务优先 DIRECT。
-
-其他 Apple / iCloud 服务进入：
-
-```text
-Apple
-```
-
-策略组。
-
-默认同样优先：
-
-```text
-DIRECT
-```
-
-## Microsoft
-
-Microsoft 中国大陆服务：
-
-```text
-microsoft@cn
-```
-
-强制 DIRECT。
-
-其他 Microsoft / Bing 服务进入：
-
-```text
-Microsoft
-```
-
-策略组。
-
-## GitHub
-
-GitHub 使用独立策略组：
-
-```text
-GitHub
-```
-
-GitHub 规则放在 Microsoft 前面，避免部分域名被更大的 Microsoft 分类提前匹配。
-
-## 中国大陆流量
-
-最后使用：
-
-```text
-geosite-cn
-geoip-cn
-```
-
-进行大陆流量直连。
-
-未命中的流量进入：
-
-```text
-Final
-```
-
-## 广告拦截
-
-Clash Party 脚本中预留：
+`ClashParty.js` 预留：
 
 ```javascript
 const BLOCK_ADS = false
@@ -626,90 +787,118 @@ const BLOCK_ADS = false
 
 默认关闭。
 
-改为：
+如果修改为：
 
 ```javascript
 const BLOCK_ADS = true
 ```
 
-后可以启用：
+则启用相关广告和 Tracker 拦截规则。
 
-```text
-category-ads-all
-tracker
-```
+部分网站或 App 的广告 SDK、统计 SDK、登录流程可能依赖相关域名，因此默认关闭以优先保证兼容性。
 
-广告和跟踪域名会被直接 REJECT。
+---
 
-开启后部分 App 或网站可能因为广告 SDK、统计 SDK 或登录依赖被拦截而出现异常，因此默认保持关闭。
+# 自定义 ClashParty.js
 
-## 自定义
-
-### 修改地区
-
-Clash Party：
+主要修改区域：
 
 ```text
 REGION_DEFS
+GROUPS_BUILD
+CATEGORY_MAP
+DIRECT_SETS
+urlTest
+BLOCK_ADS
 ```
 
-FlClash：
+例如：
 
-修改地区：
-
-```text
-filter
-```
-
-对应正则。
-
-### 修改测速
-
-调整：
-
-```text
-interval
-timeout
-tolerance
-lazy
-max-failed-times
-```
-
-### 修改业务策略
+### 增加地区
 
 修改：
 
-```text
-AI服务
-加密货币
-国外媒体
-Apple
-Google
-Microsoft
-GitHub
+```javascript
+REGION_DEFS
 ```
 
-等策略组候选列表。
+### 修改业务组候选地区
 
-### 修改规则
+修改：
 
-规则来源：
-
-```text
-MetaCubeX/meta-rules-dat
+```javascript
+GROUPS_BUILD
 ```
 
-可以根据需要添加或删除 Geosite / GeoIP 分类。
+### 修改分流规则
 
-## 上游项目
+修改：
 
-规则：
+```javascript
+CATEGORY_MAP
+DIRECT_SETS
+```
+
+### 修改测速参数
+
+修改：
+
+```javascript
+urlTest
+```
+
+---
+
+# 自定义 FlClash.js
+
+FlClash 版本主要可以修改：
+
+```text
+地区正则 filter
+策略组 proxies
+测速参数
+DNS 参数
+Rule Provider
+业务分流规则
+```
+
+FlClash 通过：
+
+```yaml
+include-all: true
+```
+
+动态纳入订阅节点，因此通常不需要手动维护节点名称。
+
+---
+
+# Rule Provider
+
+规则主要来自：
 
 [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat)
 
-图标：
+使用 Mihomo MRS 格式：
 
-[lige47/lige_icon](https://github.com/lige47/lige_icon)
+```yaml
+format: mrs
+```
+
+默认更新周期：
+
+```yaml
+interval: 86400
+```
+
+即每天检查一次规则更新。
+
+---
+
+# 上游项目
+
+规则集：
+
+[MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat)
 
 Mihomo：
 
@@ -719,47 +908,64 @@ FlClash：
 
 [chen08209/FlClash](https://github.com/chen08209/FlClash)
 
-## 更新方式
+图标：
 
-如果你直接使用本仓库 Raw 地址：
+[lige47/lige_icon](https://github.com/lige47/lige_icon)
+
+---
+
+# 更新
+
+Clash Party：
 
 ```text
-https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/Demo.js
+https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/ClashParty.js
+```
 
+FlClash：
+
+```text
 https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/FlClash.js
 ```
 
-以后只需要更新 GitHub 仓库里的脚本。
+客户端使用以上 Raw 地址后，以后更新 GitHub 中对应脚本即可。
 
-客户端重新更新远程覆写或订阅后即可获取新版。
-
-因此正常情况下无需更换客户端中的 URL。
-
-## 文件用途
+通常只需要：
 
 ```text
-Demo.js
-Clash Party / Mihomo Party
-
-FlClash.js
-FlClash
-
-README.md
-使用说明
+更新 GitHub 脚本
+↓
+客户端刷新远程覆写 / 订阅
+↓
+加载最新版
 ```
 
-建议不要把两个脚本混用。
+无需重新添加 Raw 地址。
 
-## 免责声明
+---
+
+# 文件说明
+
+| 文件              | 客户端                        | 用途                   |
+| --------------- | -------------------------- | -------------------- |
+| `ClashParty.js` | Clash Party / Mihomo Party | Clash Party 专用 JS 覆写 |
+| `FlClash.js`    | FlClash                    | FlClash 专用 JS 覆写     |
+| `README.md`     | GitHub                     | 项目说明                 |
+
+请根据客户端选择对应脚本，避免两个覆写同时使用。
+
+---
+
+# 免责声明
 
 本仓库仅供个人学习、研究与配置整理使用，不提供任何节点、订阅链接或网络服务。
 
 脚本按当前状态提供，不对正确性、可用性、兼容性或稳定性作任何明示或默示保证。
 
-使用者自行添加的订阅、节点以及产生的网络行为，由使用者自行负责。
+使用者自行添加的订阅、节点以及由此产生的网络行为，由使用者自行负责。
 
-请遵守所在地适用的法律法规以及所使用服务的相关条款。
+请遵守所在地适用的法律法规以及所使用网络服务、网站和平台的相关条款。
 
 因使用本仓库产生的服务中断、账号限制、数据问题、网络异常、财产损失或其他直接及间接后果，由使用者自行承担。
 
-下载、复制或使用本仓库内容，即代表使用者自行评估并接受相关风险。
+下载、复制、修改或使用本仓库内容，即代表使用者已自行评估并接受相关风险。
