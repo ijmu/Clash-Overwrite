@@ -846,13 +846,13 @@ function main(config) {
     ],
 
     /*
-     * 优先判断国内 DNS 结果。
+     * 主 DNS 与备用 DNS 并行查询。
      *
-     * 满足 fallback 条件时再查询海外 DNS。
+     * 仍按 fallback-filter 选择结果。
      *
-     * 可以减少不必要的双 DNS 查询。
+     * 需要备用结果时可减少串行等待；未命中缓存时查询量会增加。
      */
-    'fallback-lazy-query': true,
+    'fallback-lazy-query': false,
 
     'fallback-filter': {
       geoip: true,

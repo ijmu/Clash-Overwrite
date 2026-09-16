@@ -328,29 +328,23 @@ system
 
 # DNS Fallback
 
-开启：
+ClashParty.js 使用并行查询：
+
+```yaml
+fallback-lazy-query: false
+```
+
+主 DNS 与备用 DNS 同时查询，结果仍由 `fallback-filter` 决定。主 DNS 结果符合要求时即可返回；需要备用结果时可减少串行等待。未命中缓存时，备用 DNS 查询量会增加。
+
+FlClash.js 保持延迟查询设置：
 
 ```yaml
 fallback-lazy-query: true
 ```
 
-基本逻辑：
+它先检查主 DNS 结果，满足 Fallback 条件时才查询备用 DNS，境外查询量较少。
 
-```text
-域名请求
-↓
-国内 DNS
-↓
-检查解析结果
-↓
-正常结果
-→ 使用当前结果
-
-满足 Fallback 条件
-→ Cloudflare / Google DoH
-```
-
-这样可以减少不必要的境外 DNS 查询。
+参数语义见 [Mihomo DNS 文档](https://wiki.metacubex.one/config/dns/#fallback-lazy-query)。
 
 ---
 
