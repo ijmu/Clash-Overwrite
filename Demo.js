@@ -46,7 +46,7 @@ function main(config) {
 
   /* ---------------- 一、可调参数 ---------------- */
   const urlTest = {
-    url: 'http://www.gstatic.com/generate_204', // 与机场同款测速端点，对拥堵节点判定更稳
+    url: 'https://www.gstatic.com/generate_204', // HTTPS：机场节点侧常对 HTTP 测试地址做拦截/限流（mihomo 官方日志警告：部分 provider 劫持测试端点、不兼容重复 HEAD，HTTP 会导致测试失败）；TLS 化后与真实流量不可区分，测速更可信。实测成本仅 +约 230ms，3s 超时内
     interval: 120, // 秒；2 分钟一轮。配合 3 秒超时，半死节点（能挤过 5 秒检查但传不动真实流量）会被及时识破
     timeout: 3000, // 毫秒；健康检查超时收紧到 3 秒——拥堵节点响应 4-6 秒，5 秒阈值会误判为健康
     'max-failed-times': 1, // 健康检查真失败 1 次立即全组重选——这是故障恢复，不是漂移
