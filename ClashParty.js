@@ -1,64 +1,39 @@
 /*
- * Demo.js
- * Clash Party / Mihomo Party 个人覆写优化版
+ * ClashParty.js
+ * Clash Party / Mihomo Party 个人覆写 v2（2026-09-22）
  *
- * 目标：
- * 1. 提高日常访问速度
- * 2. 减少节点抖动导致的频繁切换
- * 3. 减少机场节点短暂波动造成的断流
- * 4. 优化 DNS 响应与 Fake-IP 稳定性
- * 5. 保留原有 AI、加密货币、媒体、Apple、Google、Microsoft、GitHub 分流
+ * 在 v1 基础上的改动（断流治理 + 分组重构）：
+ *
+ * 稳定性：
+ * 1. url-test tolerance 150 -> 80：
+ *    150 太宽，节点劣化后长时间不切换，表现为"断流"；
+ *    80 在"避免抖动"与"及时逃离劣化节点"之间取平衡。
+ * 2. DNS fallback 改为纯 IP DoH（1.1.1.1 / 8.8.8.8）：
+ *    原来的 dns.cloudflare.com / dns.google 域名自身需要解析，
+ *    网络劣化时引导查询先死，fallback 形同虚设；
+ *    纯 IP DoH 不依赖引导解析。
+ * 3. fallback-lazy-query 改回 true：
+ *    先判定主 DNS 结果，满足条件才查询境外 DoH，
+ *    境外 DNS 抖动不再拖慢国内解析。
+ * 4. proxy-server-nameserver 增加 120.53.53.53（腾讯 DNSPod DoT）：
+ *    节点域名解析三路冗余，单一公共 DNS 故障时不断流。
+ * 5. 新增全局 keep-alive-idle / keep-alive-interval = 15s：
+ *    长连接（微信 / TG / 下载）在 NAT 环境下更不容易被静默断开。
+ * 6. 信息节点过滤词库对齐 Egern 配置（套餐/订阅/续费/官网/网址/时间/应急 等）。
+ *
+ * 分组（参考 ClashConnectRules/Self-Configuration 结构）：
+ * 1. 新增顶层"节点选择"：所有业务组默认走它，
+ *    换节点只改一处，不再逐组切换。
+ * 2. 业务组默认值统一指向"节点选择"；
+ *    特殊业务保留独立出口（AI 偏好美国，Telegram 偏好新加坡/香港，
+ *    加密货币偏好台湾/日本/新加坡，国内媒体/Apple/Microsoft 默认直连）。
+ * 3. Final 默认"节点选择"，兜底逻辑集中。
+ * 4. Telegram 独立分流（geosite + geoip）。
+ * 5. 加密货币双规则集：MetaCubeX category + dler-io Crypto。
+ * 6. fake-ip-filter 合并参考配置的游戏/音乐/NTP 真实 IP 列表。
  *
  * 使用：
- * Clash Party → 覆写 → 新建 → 远程
- * 填写本文件 GitHub Raw 地址
- *
- * 核心设计：
- *
- * 自动选择
- *   直接测试全部真实节点
- *   不再经过地区组二次 url-test
- *
- * 地区组
- *   香港 / 台湾 / 日本 / 新加坡 / 韩国 / 美国
- *   每个地区组内部独立 url-test
- *
- * 手动选择
- *   地区组 + 全部真实节点
- *
- * 业务组
- *   AI服务
- *   加密货币
- *   国外媒体
- *   国内媒体
- *   Apple
- *   Google
- *   Microsoft
- *   GitHub
- *   Final
- *
- * DNS：
- *   Fake-IP
- *   国内公共 DNS
- *   国外 DoH fallback
- *   DNS 遵循分流规则
- *   独立节点域名解析
- *
- * 规则顺序：
- *   局域网
- *   CDN / R2
- *   国内 Apple / Microsoft / AI
- *   国内媒体
- *   Apple
- *   AI
- *   加密货币
- *   国外媒体
- *   Google
- *   GitHub
- *   Microsoft
- *   腾讯系直连（微信头像 / 图片等）
- *   中国大陆
- *   Final
+ * Clash Party → 覆写 → 新建 → 远程 → 填入本文件 GitHub Raw 地址
  */
 
 function main(config) {
@@ -67,7 +42,7 @@ function main(config) {
   }
 
   if (!Array.isArray(config.proxies) || config.proxies.length === 0) {
-    throw new Error('[Demo.js] 配置中缺少有效的 proxies 字段')
+    throw new Error('[ClashParty.js] 配置中缺少有效的 proxies 字段')
   }
 
   /* ============================================================
@@ -80,15 +55,16 @@ function main(config) {
   const RSET =
     'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/'
 
+  /* dler-io Crypto 规则集（classical，含交易所/行情/Web3 域名） */
+  const CRYPTO_DLER =
+    'https://cdn.jsdelivr.net/gh/dler-io/Rules@main/Clash/Provider/Crypto.yaml'
+
   /* ============================================================
    * 二、测速参数
    * ============================================================ */
 
   const urlTest = {
-    // HTTPS 测速地址
     url: 'https://www.gstatic.com/generate_204',
-
-    // 明确要求返回 204
     'expected-status': 204,
 
     // 5 分钟测速一次
@@ -97,36 +73,18 @@ function main(config) {
     // 单节点测速最多等待 3 秒
     timeout: 3000,
 
-    /*
-     * 最大失败次数
-     *
-     * 原配置为 1
-     *
-     * 改成 2 可以降低 WiFi 抖动、机场瞬时丢包、
-     * 网络切换造成的无意义强制重测。
-     */
+    // 两次失败才触发强制重测
     'max-failed-times': 2,
 
     /*
-     * 节点延迟差距低于 150ms 时保持当前节点
-     *
-     * 防止：
-     * A 80ms
-     * B 120ms
-     * C 95ms
-     *
-     * 这种小幅波动不断切节点。
+     * 容差 80ms：
+     * 低于当前节点延迟 80ms 以上才切换。
+     * v1 的 150ms 过宽，节点劣化后迟迟不切换，
+     * 体感就是"断流"。
      */
-    tolerance: 150,
+    tolerance: 80,
 
-    /*
-     * 只有策略组真正被使用时才测速
-     *
-     * 可减少：
-     * CPU 占用
-     * 网络探测
-     * 机场测速请求
-     */
+    // 只有策略组真正被使用时才测速
     lazy: true
   }
 
@@ -150,7 +108,7 @@ function main(config) {
     {
       name: '日本节点',
       icon: '01Country/Japan(1).png',
-      regex: /日本|东京|大阪|Japan|\bJP\b|🇯🇵/i
+      regex: /日本|东京|東京|大阪|Japan|\bJP\b|🇯🇵/i
     },
 
     {
@@ -170,32 +128,71 @@ function main(config) {
       icon: '01Country/US.png',
       regex:
         /美国|美國|洛杉矶|洛杉磯|圣何塞|聖荷西|西雅图|西雅圖|凤凰城|鳳凰城|United ?States|America|\bUS\b|\bUSA\b|🇺🇸/i
+    },
+
+    /*
+     * 英 / 德 / 法组仅在实际存在对应节点时才会生成，
+     * 无节点时自动隐藏，不影响显示。
+     */
+    {
+      name: '英国节点',
+      icon: '01Country/UK.png',
+      regex: /英国|英國|伦敦|倫敦|United ?Kingdom|\bUK\b|🇬🇧/i
+    },
+
+    {
+      name: '德国节点',
+      icon: '01Country/Germany.png',
+      regex: /德国|德國|法兰克福|法蘭克福|Germany|\bDE\b|🇩🇪/i
+    },
+
+    {
+      name: '法国节点',
+      icon: '01Country/France.png',
+      regex: /法国|法國|巴黎|France|\bFR\b|🇫🇷/i
     }
   ]
 
   /* ============================================================
-   * 四、业务策略组
+   * 四、策略组定义
    * ============================================================ */
+
+  /*
+   * REF 即顶层"节点选择"。
+   *
+   * 所有业务组默认第一项都是它：
+   * 换节点只需要在"节点选择"里改一次。
+   *
+   * 特殊业务保留独立出口：
+   * AI 固定偏好美国，Telegram 偏好新加坡/香港，
+   * 加密货币偏好台湾/日本/新加坡。
+   */
+
+  const REF = '节点选择'
 
   const GROUPS_BUILD = [
     {
       name: 'AI服务',
       icon: '04ProxySoft/chatgpt4.0.png',
       type: 'select',
-
-      /*
-       * AI 建议长期固定一个稳定出口。
-       *
-       * 默认仍放自动选择第一位，
-       * 如果你长期使用 ChatGPT，
-       * 可以手动固定美国节点。
-       */
       lists: [
-        '自动选择',
-        '手动选择',
+        REF,
         '美国节点',
         '新加坡节点',
-        '日本节点'
+        '日本节点',
+        '手动选择'
+      ]
+    },
+
+    {
+      name: 'Telegram',
+      icon: '04ProxySoft/telegram.png',
+      type: 'select',
+      lists: [
+        REF,
+        '新加坡节点',
+        '香港节点',
+        '手动选择'
       ]
     },
 
@@ -204,11 +201,11 @@ function main(config) {
       icon: '04ProxySoft/Bitcoin.png',
       type: 'select',
       lists: [
-        '自动选择',
-        '手动选择',
+        REF,
         '台湾节点',
         '日本节点',
-        '新加坡节点'
+        '新加坡节点',
+        '手动选择'
       ]
     },
 
@@ -217,13 +214,13 @@ function main(config) {
       icon: '05icon/play.png',
       type: 'select',
       lists: [
-        '自动选择',
-        '手动选择',
+        REF,
         '香港节点',
         '美国节点',
         '台湾节点',
         '日本节点',
-        '新加坡节点'
+        '新加坡节点',
+        '手动选择'
       ]
     },
 
@@ -233,8 +230,7 @@ function main(config) {
       type: 'select',
       lists: [
         'DIRECT',
-        '自动选择',
-        '手动选择'
+        REF
       ]
     },
 
@@ -244,13 +240,10 @@ function main(config) {
       type: 'select',
       lists: [
         'DIRECT',
-        '自动选择',
-        '手动选择',
-        '香港节点',
+        REF,
         '美国节点',
-        '台湾节点',
-        '日本节点',
-        '新加坡节点'
+        '香港节点',
+        '手动选择'
       ]
     },
 
@@ -259,10 +252,10 @@ function main(config) {
       icon: '04ProxySoft/google.png',
       type: 'select',
       lists: [
-        '自动选择',
-        '手动选择',
+        REF,
         '香港节点',
-        '美国节点'
+        '美国节点',
+        '手动选择'
       ]
     },
 
@@ -272,10 +265,10 @@ function main(config) {
       type: 'select',
       lists: [
         'DIRECT',
-        '自动选择',
-        '手动选择',
+        REF,
         '香港节点',
-        '美国节点'
+        '美国节点',
+        '手动选择'
       ]
     },
 
@@ -284,10 +277,10 @@ function main(config) {
       icon: '04ProxySoft/github.png',
       type: 'select',
       lists: [
-        '自动选择',
-        '手动选择',
+        REF,
         '香港节点',
-        '美国节点'
+        '美国节点',
+        '手动选择'
       ]
     }
   ]
@@ -297,8 +290,7 @@ function main(config) {
    * ============================================================ */
 
   const FINAL_LISTS = [
-    '自动选择',
-    '手动选择',
+    REF,
     '香港节点',
     '台湾节点',
     '日本节点',
@@ -330,17 +322,8 @@ function main(config) {
     ],
 
     /*
-     * 非中国大陆 AI
-     *
-     * 包括：
-     * OpenAI
-     * Claude
-     * Gemini
-     * Grok
-     * Perplexity
-     * Poe
-     * HuggingFace
-     * 等
+     * 非中国大陆 AI：
+     * OpenAI / Claude / Gemini / Grok / Perplexity / Poe / HuggingFace 等
      */
     [
       'AI服务',
@@ -349,6 +332,10 @@ function main(config) {
       ]
     ],
 
+    /*
+     * 加密货币双规则集：
+     * MetaCubeX category-cryptocurrency + dler-io Crypto。
+     */
     [
       '加密货币',
       [
@@ -377,9 +364,8 @@ function main(config) {
     ],
 
     /*
-     * GitHub 必须位于 Microsoft 前面。
-     *
-     * Microsoft 大类可能覆盖部分 GitHub 域名。
+     * GitHub 必须位于 Microsoft 前面，
+     * Microsoft 大类会覆盖部分 GitHub 域名。
      */
     [
       'GitHub',
@@ -403,11 +389,7 @@ function main(config) {
 
   /*
    * 默认关闭。
-   *
-   * true：
-   * 启用 MetaCubeX 广告和 tracker 规则。
-   *
-   * 某些 App / 网站可能因为 tracker 被拦截出现异常。
+   * true 时启用 MetaCubeX 广告与 tracker 规则。
    */
   const BLOCK_ADS = false
 
@@ -426,8 +408,11 @@ function main(config) {
    * 九、过滤机场信息节点
    * ============================================================ */
 
+  /*
+   * 词库对齐 Egern 配置的排除列表。
+   */
   const INFO_RE =
-    /剩余|到期|重置|官网|套餐|流量|expire|traffic|电报|频道|群组/i
+    /套餐|订阅|到期|重置|剩余|续费|官网|网址|流量|频道|公告|失联|应急|过期|有效|时间|客户端|支持|群|电报|expire|traffic/i
 
   const usable = config.proxies.filter((proxy) => {
     if (!proxy) return false
@@ -439,7 +424,7 @@ function main(config) {
 
   if (usable.length === 0) {
     throw new Error(
-      '[Demo.js] 剔除机场信息条目后没有可用节点'
+      '[ClashParty.js] 剔除机场信息条目后没有可用节点'
     )
   }
 
@@ -487,78 +472,65 @@ function main(config) {
   }))
 
   /* ============================================================
-   * 十二、自动选择
-   * ============================================================ */
-
-  /*
-   * 关键优化：
-   *
-   * 原方案：
-   *
-   * 自动选择
-   * → 香港节点
-   * → 香港具体节点
-   *
-   * 属于两层 url-test。
-   *
-   *
-   * 当前方案：
-   *
-   * 自动选择
-   * → 所有具体节点
-   *
-   * 直接从全部节点选择最快节点。
-   *
-   * 地区组仍然独立保留，
-   * 供 AI、媒体和手动指定地区使用。
-   */
-
-  const autoList = proxyNames
-
-  /* ============================================================
-   * 十三、手动选择
-   * ============================================================ */
-
-  /*
-   * 地区组优先放在前面。
-   *
-   * 后面追加全部节点，
-   * 包括未识别地区的冷门节点。
-   */
-  const manualList = regionGroups
-    .map((item) => item.name)
-    .concat(proxyNames)
-
-  /* ============================================================
-   * 十四、生成策略组
+   * 十二、生成策略组
    * ============================================================ */
 
   const groups = []
 
+  /*
+   * 顶层入口。
+   * 默认自动选择；换节点只改这里。
+   */
+  groups.push({
+    name: REF,
+    icon: ICON + '05icon/rocket.png',
+
+    type: 'select',
+
+    proxies: [
+      '自动选择',
+      '手动选择',
+      'DIRECT',
+      ...regionGroups.map((item) => item.name)
+    ]
+  })
+
+  /*
+   * 自动选择：直接测试全部真实节点，
+   * 不经过地区组二次 url-test，避免双层测速抖动。
+   */
   groups.push({
     name: '自动选择',
     icon: ICON + '05icon/lightning.png',
 
     type: 'url-test',
 
-    proxies: autoList,
+    proxies: proxyNames,
 
     ...urlTest
   })
 
+  /*
+   * 手动选择：直连 + 地区组 + 全部真实节点。
+   */
   groups.push({
     name: '手动选择',
-    icon: ICON + '05icon/rocket.png',
+    icon: ICON + '05icon/jichang.png',
 
     type: 'select',
 
-    proxies: manualList
+    proxies: [
+      'DIRECT',
+      ...regionGroups.map((item) => item.name),
+      ...proxyNames
+    ]
   })
 
-  /* ============================================================
-   * 十五、生成业务策略组
-   * ============================================================ */
-
+  /*
+   * 业务组：
+   * 第一项固定为节点选择（或直连优先类），
+   * 地区组仅在存在对应节点时加入。
+   */
   for (const def of GROUPS_BUILD) {
     const candidates = []
 
@@ -569,7 +541,7 @@ function main(config) {
       }
 
       if (
-        item === '自动选择' ||
+        item === REF ||
         item === '手动选择'
       ) {
         candidates.push(item)
@@ -596,7 +568,7 @@ function main(config) {
   }
 
   /* ============================================================
-   * 十六、Final
+   * 十三、Final
    * ============================================================ */
 
   groups.push({
@@ -608,8 +580,7 @@ function main(config) {
     proxies: FINAL_LISTS.filter((item) => {
       if (
         item === 'DIRECT' ||
-        item === '自动选择' ||
-        item === '手动选择'
+        item === REF
       ) {
         return true
       }
@@ -622,18 +593,13 @@ function main(config) {
 
   /*
    * 显示顺序：
-   *
-   * 自动选择
-   * 手动选择
-   * 业务组
-   * Final
-   * 地区组
+   * 节点选择 / 自动选择 / 手动选择 / 业务组 / Final / 地区组
    */
   const orderedGroups =
     groups.concat(regionGroupDefs)
 
   /* ============================================================
-   * 十七、Rule Provider
+   * 十四、Rule Provider
    * ============================================================ */
 
   const providers = {}
@@ -685,7 +651,7 @@ function main(config) {
   }
 
   /* ============================================================
-   * 十八、局域网直连
+   * 十五、局域网直连
    * ============================================================ */
 
   rules.push(
@@ -701,18 +667,8 @@ function main(config) {
   )
 
   /* ============================================================
-   * 十九、CDN 与规则下载直连
+   * 十六、CDN 与规则下载直连
    * ============================================================ */
-
-  /*
-   * jsDelivr：
-   * 图标和规则下载。
-   *
-   * Cloudflare R2：
-   * 对象存储。
-   *
-   * 直接访问可以避免机场限速影响规则下载。
-   */
 
   rules.push(
     'DOMAIN-SUFFIX,jsdelivr.net,DIRECT'
@@ -727,7 +683,7 @@ function main(config) {
   )
 
   /* ============================================================
-   * 二十、中国大陆服务优先直连
+   * 十七、中国大陆服务优先直连
    * ============================================================ */
 
   for (const name of DIRECT_SETS) {
@@ -739,7 +695,7 @@ function main(config) {
   }
 
   /* ============================================================
-   * 二十一、广告拦截
+   * 十八、广告拦截
    * ============================================================ */
 
   if (BLOCK_ADS) {
@@ -757,7 +713,7 @@ function main(config) {
   }
 
   /* ============================================================
-   * 二十二、业务分流
+   * 十九、业务分流
    * ============================================================ */
 
   for (const [group, nameList] of CATEGORY_MAP) {
@@ -771,22 +727,47 @@ function main(config) {
     }
   }
 
+  /*
+   * 加密货币补充规则集（dler-io，classical）。
+   * 与 MetaCubeX category 并行使用。
+   */
+  providers['crypto-dler'] = {
+    type: 'http',
+
+    behavior: 'classical',
+
+    format: 'yaml',
+
+    url: CRYPTO_DLER,
+
+    interval: 604800
+  }
+
+  rules.push('RULE-SET,crypto-dler,加密货币')
+
+  /*
+   * Telegram 独立分流。
+   * geoip-telegram 覆盖 TG 数据中心 IP 段。
+   */
+  rules.push(
+    'RULE-SET,' +
+    addRuleSet('telegram') +
+    ',Telegram'
+  )
+
+  rules.push(
+    'RULE-SET,' +
+    addGeoIP('telegram') +
+    ',Telegram,no-resolve'
+  )
+
   /* ============================================================
-   * 二十三、中国大陆直连
+   * 二十、中国大陆直连
    * ============================================================ */
 
   /*
-   * 腾讯系域名显式直连。
-   *
-   * geosite-cn 不包含以下腾讯自有域名：
-   *   qlogo.cn      微信头像
-   *   qpic.cn       聊天图片 / 朋友圈图片
-   *   gtimg.cn      静态资源
-   *   wechatpay.cn  微信支付
-   *
-   * 缺失时这些流量会命中 MATCH,Final 走代理，
-   * 腾讯 CDN 对境外出口拒绝或挂起，
-   * 表现为微信群聊头像无法显示。
+   * 腾讯系域名显式直连（微信头像 / 图片 / 支付）。
+   * geosite-cn 不完全包含，缺失时命中 Final 走代理会挂起。
    */
   rules.push(
     'RULE-SET,' +
@@ -807,7 +788,7 @@ function main(config) {
   )
 
   /* ============================================================
-   * 二十四、最终兜底
+   * 二十一、最终兜底
    * ============================================================ */
 
   rules.push(
@@ -815,15 +796,12 @@ function main(config) {
   )
 
   /* ============================================================
-   * 二十五、DNS
+   * 二十二、DNS
    * ============================================================ */
 
   const dns = {
     enable: true,
 
-    /*
-     * ARC 对热点 DNS 缓存通常比简单 LRU 更合适。
-     */
     'cache-algorithm': 'arc',
 
     ipv6: false,
@@ -832,24 +810,16 @@ function main(config) {
 
     'fake-ip-range': '198.18.0.1/16',
 
-    /*
-     * respect-rules 与 H3 同时使用没有明显必要。
-     */
     'prefer-h3': false,
 
     /*
-     * 国内 DNS。
-     *
-     * 负责绝大部分正常解析。
+     * 国内 DNS：负责绝大部分解析。
      */
     nameserver: [
       '223.5.5.5',
       '119.29.29.29'
     ],
 
-    /*
-     * 局域网域名交给系统 DNS。
-     */
     'nameserver-policy': {
       '+.lan': 'system',
       '+.local': 'system',
@@ -858,21 +828,20 @@ function main(config) {
     },
 
     /*
-     * 境外备用 DNS。
+     * 境外备用 DNS 改为纯 IP DoH：
+     * 不依赖自身域名解析，网络劣化时仍然可用。
+     * 请求遵守分流规则（respect-rules）经代理发出。
      */
     fallback: [
-      'https://dns.cloudflare.com/dns-query',
-      'https://dns.google/dns-query'
+      'https://1.1.1.1/dns-query',
+      'https://8.8.8.8/dns-query'
     ],
 
     /*
-     * 主 DNS 与备用 DNS 并行查询。
-     *
-     * 仍按 fallback-filter 选择结果。
-     *
-     * 需要备用结果时可减少串行等待；未命中缓存时查询量会增加。
+     * 先判定主 DNS 结果，满足 fallback-filter 才查询境外 DoH。
+     * v1 的 false 会让境外 DNS 抖动拖慢国内解析。
      */
-    'fallback-lazy-query': false,
+    'fallback-lazy-query': true,
 
     'fallback-filter': {
       geoip: true,
@@ -882,7 +851,20 @@ function main(config) {
       ipcidr: [
         '240.0.0.0/4',
         '0.0.0.0/32',
-        '127.0.0.1/32'
+        '127.0.0.1/32',
+        '100.64.0.0/10'
+      ],
+
+      /*
+       * 这些域名视为易污染，直接使用 fallback 结果。
+       */
+      domain: [
+        '+.google.com',
+        '+.youtube.com',
+        '+.facebook.com',
+        '+.twitter.com',
+        '+.openai.com',
+        '+.github.com'
       ]
     },
 
@@ -895,32 +877,18 @@ function main(config) {
     ],
 
     /*
-     * 专门解析机场节点域名。
-     *
-     * 不再加入 system。
-     *
-     * 避免：
-     * 系统 DNS
-     * 路由器 DNS
-     * 公共 DNS
-     *
-     * 多来源解析造成行为不一致。
+     * 节点域名解析三路冗余：
+     * 阿里 / 腾讯公共 DNS + 腾讯 DoT。
+     * 单一 DNS 故障时节点仍然可解析，不断流。
      */
     'proxy-server-nameserver': [
       '223.5.5.5',
-      '119.29.29.29'
+      '119.29.29.29',
+      'tls://120.53.53.53'
     ],
 
     /*
-     * 以下域名返回真实 IP。
-     *
-     * 主要解决：
-     * 局域网
-     * NTP
-     * STUN
-     * Apple 部分服务
-     * 国内影音服务
-     * 部分 IoT 服务
+     * 以下域名返回真实 IP（合并参考配置的游戏 / 音乐 / NTP 列表）。
      */
     'fake-ip-filter': [
       '*.lan',
@@ -933,6 +901,7 @@ function main(config) {
       '+.msftncsi.com',
 
       '+.pool.ntp.org',
+      'time1.cloud.tencent.com',
 
       'ntp.*.com',
       'ntp1.*.com',
@@ -958,65 +927,83 @@ function main(config) {
       'stun.*.*.*',
       '*.stun.*.*',
       '*.stun.*.*.*',
+      '+.stun.*.*.*',
 
       'swscan.apple.com',
+      'swquery.apple.com',
+      'swdownload.apple.com',
+      'swcdn.apple.com',
+      'swdist.apple.com',
       'mesu.apple.com',
 
       '*.music.163.com',
       'music.163.com',
+      '*.126.net',
+
+      'musicapi.taihe.com',
+      'music.taihe.com',
+
+      'songsearch.kugou.com',
+      'trackercdn.kugou.com',
+
+      '*.kuwo.cn',
+      '*.music.migu.cn',
+      'music.migu.cn',
 
       'y.qq.com',
       '*.y.qq.com',
+      'streamoc.music.tc.qq.com',
+      'mobileoc.music.tc.qq.com',
+      'isure.stream.qqmusic.qq.com',
+      'dl.stream.qqmusic.qq.com',
+      'aqqmusic.tc.qq.com',
+      'amobile.music.tc.qq.com',
 
       '*.bilibili.com',
       'api.bilibili.com',
+      '*.mcdn.bilivideo.cn',
 
       'www.douyu.com',
-
       'activityapi.huya.com',
 
       'localhost.ptlogin2.qq.com',
+      'localhost.sec.qq.com',
 
       'Mijia Cloud',
+      'dig.io.mi.com',
 
-      'dig.io.mi.com'
+      '+.srv.nintendo.net',
+      '+.stun.playstation.net',
+      'xbox.*.microsoft.com',
+      '+.ipv6.microsoft.com',
+      '+.battlenet.com.cn',
+      '+.pvp.net',
+      '+.media.dssott.com',
+
+      'proxy.golang.org'
     ],
 
     /*
      * DNS 请求遵守 Clash 分流规则。
-     *
-     * 开启此参数时必须存在：
-     * proxy-server-nameserver
+     * 开启时必须存在 proxy-server-nameserver。
      */
     'respect-rules': true
   }
 
   /* ============================================================
-   * 二十六、域名嗅探
+   * 二十三、域名嗅探
    * ============================================================ */
 
   const sniffer = {
     enable: true,
 
-    /*
-     * Fake-IP 与嗅探域名映射。
-     */
     'force-dns-mapping': true,
 
-    /*
-     * 对纯 IP 连接尝试嗅探域名。
-     */
     'parse-pure-ip': true,
 
     /*
-     * 不直接改写原始目标地址。
-     *
-     * 对部分：
-     * 银行 App
-     * 游戏
-     * 证书固定 App
-     *
-     * 兼容性更好。
+     * 不直接改写原始目标地址，
+     * 对银行 App / 游戏 / 证书固定应用兼容性更好。
      */
     'override-destination': false,
 
@@ -1052,7 +1039,7 @@ function main(config) {
   }
 
   /* ============================================================
-   * 二十七、写回配置
+   * 二十四、写回配置
    * ============================================================ */
 
   return Object.assign(
@@ -1065,40 +1052,27 @@ function main(config) {
       proxies: usable,
 
       /*
-       * 顶层 IPv6 关闭。
-       *
-       * 物理网络没有公网 IPv6 时，
-       * TUN 接管 IPv6 默认路由会形成黑洞：
-       * 微信等客户端通过 HTTPDNS 拿到 IPv6 地址后
-       * 全部进入 TUN 且无法拨出，
-       * 头像、朋友圈等流量反复重试失败。
-       *
-       * 关闭后系统在 IPv4 上正常回退。
-       *
-       * 注意：Mihomo Party 接管配置优先级更高，
-       * 需在 接管配置 中同步保持 ipv6: false。
+       * 顶层 IPv6 关闭：
+       * 物理网络无公网 IPv6 时，TUN 接管 IPv6 默认路由会形成黑洞。
+       * 注意：Mihomo Party 接管配置优先级更高，需同步保持 ipv6: false。
        */
       ipv6: false,
 
-      /*
-       * 统一延迟计算逻辑。
-       */
       'unified-delay': true,
 
-      /*
-       * DNS 返回多个 IP 时，
-       * Mihomo 可以并发建立 TCP 连接，
-       * 使用最快成功的连接。
-       *
-       * 与 IPv4 / IPv6 Happy Eyeballs
-       * 不是完全相同概念。
-       */
       'tcp-concurrent': true,
 
       /*
+       * TCP keep-alive：
+       * 长连接在 NAT 下更不容易被静默断开，
+       * 降低微信 / TG / 下载任务"连着连着就断"的概率。
+       */
+      'keep-alive-idle': 15,
+
+      'keep-alive-interval': 15,
+
+      /*
        * 保留策略组选择与 Fake-IP 映射。
-       *
-       * 客户端重启后体验更稳定。
        */
       profile: {
         'store-selected': true,
