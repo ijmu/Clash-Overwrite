@@ -96,7 +96,7 @@ function main(config) {
     {
       name: '香港节点',
       icon: '01Country/Hongkong.png',
-      regex: /香港|Hong ?Kong|\bHK\b|🇭🇰/i
+      regex: /香港|Hong ?Kong|\bHK\b|\bHKG\b|🇭🇰/i
     },
 
     {
@@ -136,7 +136,7 @@ function main(config) {
      */
     {
       name: '英国节点',
-      icon: '01Country/UK.png',
+      icon: '01Country/UnitedKingdom.png',
       regex: /英国|英國|伦敦|倫敦|United ?Kingdom|\bUK\b|🇬🇧/i
     },
 
@@ -148,7 +148,11 @@ function main(config) {
 
     {
       name: '法国节点',
-      icon: '01Country/France.png',
+      /*
+       * lige_icon / QuanX-icon-rule 两个库都没有法国国旗，
+       * 使用 flagcdn 的 PNG（已实测 200）。
+       */
+      icon: 'https://flagcdn.com/w320/fr.png',
       regex: /法国|法國|巴黎|France|\bFR\b|🇫🇷/i
     }
   ]
@@ -462,7 +466,13 @@ function main(config) {
 
   const regionGroupDefs = regionGroups.map((region) => ({
     name: region.name,
-    icon: ICON + region.icon,
+
+    /*
+     * 完整 URL 直接使用；否则拼接 lige_icon 前缀。
+     */
+    icon: region.icon.startsWith('http')
+      ? region.icon
+      : ICON + region.icon,
 
     type: 'url-test',
 
