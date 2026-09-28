@@ -1,10 +1,25 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v3（2026-09-28）
+ * Clash Party / Mihomo Party 个人覆写 v4（2026-09-28）
  *
- * v3：AI 美国优先；手动组自动选择优先；移除共享 CDN 全域直连；
- * 新增 Wise / iFAST / Neverless / Speedtest 独立分流；精简 Fake-IP 排除。
- * 金融默认地区沿用个人 Egern 偏好，不代表服务商通用地区要求。
+ * v4：对齐个人 Egern 分流（Tools/Egern/Egern.yaml）：
+ *   - 新增香港银行与券商分流（ZA / Livi / 中银 / 汇丰 / 恒生 / 花旗 / 天星 /
+ *     交银 / 富邦 / MOX / Tap&Go / 渣打 / 信银国际 / WeLab / 富途·moomoo /
+ *     Clubsim）→ 香港节点；域名取自 Egern 引用的 LeiyuG HongKong.list，
+ *     仅保留明确域名，不采用关键词；
+ *   - 新增 IBKR → 美国、Kraken → 英国、N26 → 德国、Maya → 菲律宾；
+ *   - 加密货币候选补齐 香港 / 美国（对齐 Egern Crypto 顺序）；
+ *   - Google 组补 土耳其 / 尼日利亚 候选（对齐 Egern Google 组）；
+ *   - 新增 TikTok 独立组（美国 / 日本 / 新加坡），自国外媒体拆出；
+ *   - 新增 菲律宾 / 土耳其 / 尼日利亚 地区组，无节点时自动隐藏；
+ *   - 个人直连域名对齐 Egern Direct_Own（rilipro / liangxin / ipix.ink /
+ *     skk.moe / duolingo 等；jsDelivr 沿用 v3 决定，不整域直连）；
+ *   - DNS 上游改为国产加密 DoH（alidns / doh.pub），fallback 过滤域名补充 AI 站点；
+ *   - 新增 geosite google@cn / douyin 直连；
+ *   - 对齐 Egern block_quic: true：默认拒绝 UDP 443，强制回落 TCP
+ *     （BLOCK_QUIC 可关闭；Egern 未移植项：SSID 规则、脚本、模块）；
+ *   - 对齐 Egern：96110 关键词与 gjfzpt.cn 反诈平台 REJECT。
+ * 地区组不存在时相关规则自动跳过。
  * 已保存的策略选择优先于候选顺序，更新后请手动检查一次业务组。
  * 保留 DNS fallback、测速和 TCP 参数；测速延迟不代表吞吐或业务可用性。
  *
@@ -124,6 +139,29 @@ function main(config) {
        */
       icon: 'https://flagcdn.com/w320/fr.png',
       regex: /法国|法國|巴黎|France|\bFR\b|🇫🇷/i
+    },
+
+    /*
+     * v4：菲律宾 / 土耳其 / 尼日利亚，对齐 Egern 的 PH / TR / NG 组。
+     * 用途：Maya 分流与 Google 组的地区候选；
+     * 无对应节点时自动隐藏。图标按法国先例使用 flagcdn。
+     */
+    {
+      name: '菲律宾节点',
+      icon: 'https://flagcdn.com/w320/ph.png',
+      regex: /菲律宾|菲律賓|马尼拉|馬尼拉|Philippines|Manila|\bPH\b|\bMNL\b|🇵🇭/i
+    },
+
+    {
+      name: '土耳其节点',
+      icon: 'https://flagcdn.com/w320/tr.png',
+      regex: /土耳其|伊斯坦布尔|伊斯坦堡|Turkey|Türkiye|\bTR\b|\bIST\b|🇹🇷/i
+    },
+
+    {
+      name: '尼日利亚节点',
+      icon: 'https://flagcdn.com/w320/ng.png',
+      regex: /尼日利亚|尼日利亞|拉各斯|Lagos|Nigeria|\bNG\b|🇳🇬/i
     }
   ]
 
@@ -194,11 +232,17 @@ function main(config) {
       name: '加密货币',
       icon: '04ProxySoft/Bitcoin.png',
       type: 'select',
+      /*
+       * v4：候选顺序对齐 Egern Crypto（HK, US, TW, JP, SG）。
+       * 已保存的选择优先于候选顺序。
+       */
       lists: [
-        REF,
+        '香港节点',
+        '美国节点',
         '台湾节点',
         '日本节点',
         '新加坡节点',
+        REF,
         '手动选择'
       ]
     },
@@ -214,6 +258,23 @@ function main(config) {
         '台湾节点',
         '日本节点',
         '新加坡节点',
+        '手动选择'
+      ]
+    },
+
+    {
+      name: 'TikTok',
+      /*
+       * v4：自国外媒体拆出，对齐 Egern TikTok 组（US, JP, SG）。
+       * TikTok 对出口 IP 地区敏感，独立控制。
+       */
+      icon: '04ProxySoft/tiktok.png',
+      type: 'select',
+      lists: [
+        '美国节点',
+        '日本节点',
+        '新加坡节点',
+        REF,
         '手动选择'
       ]
     },
@@ -245,10 +306,16 @@ function main(config) {
       name: 'Google',
       icon: '04ProxySoft/google.png',
       type: 'select',
+      /*
+       * v4：补 土耳其 / 尼日利亚 候选，对齐 Egern Google 组（HK, US, TR, NG），
+       * 用于订阅区域相关操作；无节点时自动隐藏。
+       */
       lists: [
         REF,
         '香港节点',
         '美国节点',
+        '土耳其节点',
+        '尼日利亚节点',
         '手动选择'
       ]
     },
@@ -329,6 +396,7 @@ function main(config) {
     /*
      * 加密货币双规则集：
      * MetaCubeX category-cryptocurrency + dler-io Crypto。
+     * Kraken 等指定地区的精确规则位于其前，优先生效。
      */
     [
       '加密货币',
@@ -345,7 +413,6 @@ function main(config) {
         'disney',
         'primevideo',
         'hbo',
-        'tiktok',
         'spotify'
       ]
     ],
@@ -388,18 +455,36 @@ function main(config) {
   const BLOCK_ADS = false
 
   /* ============================================================
-   * 八、强制直连规则
+   * 八、QUIC 屏蔽
    * ============================================================ */
 
+  /*
+   * 对齐 Egern block_quic: true。
+   * 拒绝 UDP 443 使 QUIC 回落 TCP：
+   * TUN 下 QUIC 难以正确代理，且嗅探与分流对 TCP 更可靠。
+   * 浏览器与主流 App 会自动回落，个别游戏如异常可改为 false。
+   */
+  const BLOCK_QUIC = true
+
+  /* ============================================================
+   * 九、强制直连规则
+   * ============================================================ */
+
+  /*
+   * v4：新增 google@cn（dl.google.com / fonts / update 等大陆可达域名，
+   * 同时覆盖 Egern Unbreak 中的 Google 项）与 douyin。
+   */
   const DIRECT_SETS = [
     'apple-cn',
     'icloud@cn',
     'category-ai-cn',
-    'microsoft@cn'
+    'microsoft@cn',
+    'google@cn',
+    'douyin'
   ]
 
   /* ============================================================
-   * 九、过滤机场信息节点
+   * 十、过滤机场信息节点
    * ============================================================ */
 
   /*
@@ -425,7 +510,7 @@ function main(config) {
   const proxyNames = usable.map((proxy) => proxy.name)
 
   /* ============================================================
-   * 十、节点地区归类
+   * 十一、节点地区归类
    * ============================================================ */
 
   const pools = REGION_DEFS.map((def) => ({
@@ -450,8 +535,11 @@ function main(config) {
     (item) => item.nodes.length > 0
   )
 
+  const regionExists = (name) =>
+    regionGroups.some((item) => item.name === name)
+
   /* ============================================================
-   * 十一、地区 url-test
+   * 十二、地区 url-test
    * ============================================================ */
 
   const regionGroupDefs = regionGroups.map((region) => ({
@@ -472,7 +560,7 @@ function main(config) {
   }))
 
   /* ============================================================
-   * 十二、生成策略组
+   * 十三、生成策略组
    * ============================================================ */
 
   const groups = []
@@ -549,11 +637,7 @@ function main(config) {
         continue
       }
 
-      const exists = regionGroups.some(
-        (region) => region.name === item
-      )
-
-      if (exists) {
+      if (regionExists(item)) {
         candidates.push(item)
       }
     }
@@ -569,7 +653,7 @@ function main(config) {
   }
 
   /* ============================================================
-   * 十三、Final
+   * 十四、Final
    * ============================================================ */
 
   groups.push({
@@ -586,9 +670,7 @@ function main(config) {
         return true
       }
 
-      return regionGroups.some(
-        (region) => region.name === item
-      )
+      return regionExists(item)
     })
   })
 
@@ -600,7 +682,7 @@ function main(config) {
     groups.concat(regionGroupDefs)
 
   /* ============================================================
-   * 十四、Rule Provider
+   * 十五、Rule Provider
    * ============================================================ */
 
   const providers = {}
@@ -652,7 +734,7 @@ function main(config) {
   }
 
   /* ============================================================
-   * 十五、局域网直连
+   * 十六、局域网直连
    * ============================================================ */
 
   rules.push(
@@ -668,10 +750,43 @@ function main(config) {
   )
 
   /* ============================================================
-   * 十六、个人业务精确规则
+   * 十七、反诈与 QUIC（对齐 Egern）
+   * ============================================================ */
+
+  /*
+   * 反诈热线域名与国家反诈平台：直接拒绝（对齐 Egern 首两条规则）。
+   */
+  rules.push(
+    'DOMAIN-KEYWORD,96110,REJECT',
+    'DOMAIN-SUFFIX,gjfzpt.cn,REJECT'
+  )
+
+  if (BLOCK_QUIC) {
+    rules.push(
+      'AND,((NETWORK,udp),(DST-PORT,443)),REJECT'
+    )
+  }
+
+  /* ============================================================
+   * 十八、个人业务精确规则
    * 不强制直连 jsDelivr / R2 整个后缀，交由常规分流和 Final。
    * 金融域名参考 Egern 引用规则，仅保留明确域名，不采用关键词。
    * ============================================================ */
+
+  /*
+   * 个人直连域名，对齐 Egern Direct_Own.yaml。
+   * 其中 cdn.jsdelivr.net 在 Egern 里直连，
+   * 本覆写自 v3 起不整域直连 jsDelivr，维持不变。
+   */
+  rules.push(
+    'DOMAIN-SUFFIX,rilipro.com,DIRECT',
+    'DOMAIN-SUFFIX,egernlicense.com,DIRECT',
+    'DOMAIN-SUFFIX,liangxin.xyz,DIRECT',
+    'DOMAIN,m1.tohno-0.top,DIRECT',
+    'DOMAIN-SUFFIX,ipix.ink,DIRECT',
+    'DOMAIN-SUFFIX,duolingo.com,DIRECT',
+    'DOMAIN-SUFFIX,skk.moe,DIRECT'
+  )
 
   rules.push(
     'DOMAIN-SUFFIX,wise.com,Wise',
@@ -685,7 +800,134 @@ function main(config) {
   )
 
   /* ============================================================
-   * 十七、中国大陆服务优先直连
+   * 十九、地区金融分流（对齐 Egern，地区组缺失时整组跳过）
+   * 域名取自 Egern 引用的 LeiyuG/Surge 规则集，
+   * 仅保留明确域名；宽泛条目（tealiumiq / appsflyer 一类 CDN 除外）
+   * 与 DOMAIN-KEYWORD 一律不收录。
+   * ============================================================ */
+
+  const REGION_FINANCE = [
+    {
+      region: '香港节点',
+      /*
+       * ZA众安 / Livi理慧 / 中银香港 / 汇丰 / 恒生 / 花旗香港 /
+       * HKMU / 天星 / 交银香港 / 富邦 / MOX / Tap&Go / 渣打 /
+       * 信银国际 / WeLab / 富途·moomoo / Clubsim
+       */
+      suffixes: [
+        'za.group',
+        'zaticdn.com',
+        'zajourney.com',
+        'livibank.com',
+        'etnet.com.hk',
+        'bochk.com',
+        'bochkonline.com',
+        'hsbc.com.hk',
+        'tealiumiq.com',
+        'hangseng.com',
+        'citibank.com.hk',
+        'hkmu.edu.hk',
+        'airstarbank.com',
+        'hk.bankcomm.com',
+        'fusionbank.com',
+        'prod-mox.com',
+        'mox.com',
+        'tapngo.com.hk',
+        'sc.com',
+        'standardchartered.com',
+        'cncbinternational.com',
+        'welab.bank',
+        'futunn.com',
+        'futuhn.com',
+        'futustatic.com',
+        'futuhk.com',
+        'futu5.com',
+        'moomoo.com',
+        'fututrade.com',
+        'futusg.com',
+        'futuie.com',
+        'futuholdings.com',
+        'futuesop.com',
+        'clubsim.com.hk',
+        'pccw.com'
+      ],
+      exacts: [
+        'mcxymt1vz-smy-nsfkm9-07xj6-8.device.marketingcloudapis.com',
+        'lptag.liveperson.net',
+        'lpcdn.lpsnmedia.net',
+        'log-58144bf0.we-stats.com',
+        'mobile.eum-appdynamics.com',
+        'tags.tiqcdn.com',
+        'cdn.appdynamics.com',
+        'eapi.preferences.prod.ap-east-1.vam-hk.cloud1.vv1865.com',
+        'v1d3dx-skadsdkless.appsflyersdk.com'
+      ]
+    },
+    {
+      region: '美国节点',
+      /* 盈透证券（Egern: IBKR → US） */
+      suffixes: [
+        'ibkr.com',
+        'ibllc.com',
+        'interactivebrokers.com',
+        'interactivebrokers.com.hk'
+      ],
+      exacts: []
+    },
+    {
+      region: '英国节点',
+      /* Kraken（Egern: Kraken → UK） */
+      suffixes: [
+        'kraken.com'
+      ],
+      exacts: []
+    },
+    {
+      region: '德国节点',
+      /* N26（Egern: N26 → DE） */
+      suffixes: [
+        'n26.com',
+        'tech26.de',
+        'number26.de'
+      ],
+      exacts: []
+    },
+    {
+      region: '菲律宾节点',
+      /* Maya / PayMaya（Egern: Maya → PH） */
+      suffixes: [
+        'maya.ph',
+        'paymaya.com',
+        'mayabank.ph',
+        'voyagerinnovation.com',
+        'voyagerapis.com'
+      ],
+      exacts: [
+        '940c5ecf154a2dd669454fc022ed18283a8196d9.csftr.com'
+      ]
+    }
+  ]
+
+  for (const fin of REGION_FINANCE) {
+    if (!regionExists(fin.region)) {
+      continue
+    }
+
+    for (const domain of fin.suffixes) {
+      rules.push(
+        'DOMAIN-SUFFIX,' + domain + ',' + fin.region
+      )
+    }
+
+    for (const domain of fin.exacts) {
+      rules.push(
+        'DOMAIN,' + domain + ',' + fin.region
+      )
+    }
+  }
+
+  /* ============================================================
+   * 二十、中国大陆服务优先直连
    * ============================================================ */
 
   for (const name of DIRECT_SETS) {
@@ -697,7 +939,7 @@ function main(config) {
   }
 
   /* ============================================================
-   * 十八、广告拦截
+   * 二十一、广告拦截
    * ============================================================ */
 
   if (BLOCK_ADS) {
@@ -715,7 +957,7 @@ function main(config) {
   }
 
   /* ============================================================
-   * 十九、业务分流
+   * 二十二、业务分流
    * ============================================================ */
 
   for (const [group, nameList] of CATEGORY_MAP) {
@@ -728,6 +970,15 @@ function main(config) {
       )
     }
   }
+
+  /*
+   * v4：TikTok 独立分流（原属国外媒体）。
+   */
+  rules.push(
+    'RULE-SET,' +
+    addRuleSet('tiktok') +
+    ',TikTok'
+  )
 
   /*
    * 加密货币补充规则集（dler-io，classical）。
@@ -764,7 +1015,7 @@ function main(config) {
   )
 
   /* ============================================================
-   * 二十、中国大陆直连
+   * 二十三、中国大陆直连
    * ============================================================ */
 
   /*
@@ -790,7 +1041,7 @@ function main(config) {
   )
 
   /* ============================================================
-   * 二十一、最终兜底
+   * 二十四、最终兜底
    * ============================================================ */
 
   rules.push(
@@ -798,7 +1049,7 @@ function main(config) {
   )
 
   /* ============================================================
-   * 二十二、DNS
+   * 二十五、DNS
    * ============================================================ */
 
   const dns = {
@@ -816,10 +1067,12 @@ function main(config) {
 
     /*
      * 国内 DNS：负责绝大部分解析。
+     * v4：改为国产加密 DoH（对齐 Egern Domestic-Encrypted-DNS），
+     * 自身域名由 default-nameserver 纯 IP 引导。
      */
     nameserver: [
-      '223.5.5.5',
-      '119.29.29.29'
+      'https://dns.alidns.com/dns-query',
+      'https://doh.pub/dns-query'
     ],
 
     'nameserver-policy': {
@@ -859,6 +1112,7 @@ function main(config) {
 
       /*
        * 这些域名视为易污染，直接使用 fallback 结果。
+       * v4：补充 AI 站点新域名。
        */
       domain: [
         '+.google.com',
@@ -866,6 +1120,10 @@ function main(config) {
         '+.facebook.com',
         '+.twitter.com',
         '+.openai.com',
+        '+.anthropic.com',
+        '+.claude.com',
+        '+.x.ai',
+        '+.perplexity.ai',
         '+.github.com'
       ]
     },
@@ -930,7 +1188,7 @@ function main(config) {
   }
 
   /* ============================================================
-   * 二十三、域名嗅探
+   * 二十六、域名嗅探
    * ============================================================ */
 
   const sniffer = {
@@ -978,7 +1236,7 @@ function main(config) {
   }
 
   /* ============================================================
-   * 二十四、写回配置
+   * 二十七、写回配置
    * ============================================================ */
 
   return Object.assign(
