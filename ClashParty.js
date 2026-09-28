@@ -1,39 +1,14 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v2（2026-09-22）
+ * Clash Party / Mihomo Party 个人覆写 v3（2026-09-28）
  *
- * 在 v1 基础上的改动（断流治理 + 分组重构）：
+ * v3：AI 美国优先；手动组自动选择优先；移除共享 CDN 全域直连；
+ * 新增 Wise / iFAST / Neverless / Speedtest 独立分流；精简 Fake-IP 排除。
+ * 金融默认地区沿用个人 Egern 偏好，不代表服务商通用地区要求。
+ * 已保存的策略选择优先于候选顺序，更新后请手动检查一次业务组。
+ * 保留 DNS fallback、测速和 TCP 参数；测速延迟不代表吞吐或业务可用性。
  *
- * 稳定性：
- * 1. url-test tolerance 150 -> 80：
- *    150 太宽，节点劣化后长时间不切换，表现为"断流"；
- *    80 在"避免抖动"与"及时逃离劣化节点"之间取平衡。
- * 2. DNS fallback 改为纯 IP DoH（1.1.1.1 / 8.8.8.8）：
- *    原来的 dns.cloudflare.com / dns.google 域名自身需要解析，
- *    网络劣化时引导查询先死，fallback 形同虚设；
- *    纯 IP DoH 不依赖引导解析。
- * 3. fallback-lazy-query 改回 true：
- *    先判定主 DNS 结果，满足条件才查询境外 DoH，
- *    境外 DNS 抖动不再拖慢国内解析。
- * 4. proxy-server-nameserver 增加 120.53.53.53（腾讯 DNSPod DoT）：
- *    节点域名解析三路冗余，单一公共 DNS 故障时不断流。
- * 5. 新增全局 keep-alive-idle / keep-alive-interval = 15s：
- *    长连接（微信 / TG / 下载）在 NAT 环境下更不容易被静默断开。
- * 6. 信息节点过滤词库对齐 Egern 配置（套餐/订阅/续费/官网/网址/时间/应急 等）。
- *
- * 分组（参考 ClashConnectRules/Self-Configuration 结构）：
- * 1. 新增顶层"节点选择"：所有业务组默认走它，
- *    换节点只改一处，不再逐组切换。
- * 2. 业务组默认值统一指向"节点选择"；
- *    特殊业务保留独立出口（AI 偏好美国，Telegram 偏好新加坡/香港，
- *    加密货币偏好台湾/日本/新加坡，国内媒体/Apple/Microsoft 默认直连）。
- * 3. Final 默认"节点选择"，兜底逻辑集中。
- * 4. Telegram 独立分流（geosite + geoip）。
- * 5. 加密货币双规则集：MetaCubeX category + dler-io Crypto。
- * 6. fake-ip-filter 合并参考配置的游戏/音乐/NTP 真实 IP 列表。
- *
- * 使用：
- * Clash Party → 覆写 → 新建 → 远程 → 填入本文件 GitHub Raw 地址
+ * Clash Party → 覆写 → 远程 → 本文件 GitHub Raw 地址
  */
 
 function main(config) {
@@ -76,12 +51,7 @@ function main(config) {
     // 两次失败才触发强制重测
     'max-failed-times': 2,
 
-    /*
-     * 容差 80ms：
-     * 低于当前节点延迟 80ms 以上才切换。
-     * v1 的 150ms 过宽，节点劣化后迟迟不切换，
-     * 体感就是"断流"。
-     */
+    // 健康节点间的切换容差；当前节点测速不存活时另行切换。
     tolerance: 80,
 
     // 只有策略组真正被使用时才测速
@@ -164,26 +134,46 @@ function main(config) {
   /*
    * REF 即顶层"节点选择"。
    *
-   * 所有业务组默认第一项都是它：
-   * 换节点只需要在"节点选择"里改一次。
-   *
-   * 特殊业务保留独立出口：
-   * AI 固定偏好美国，Telegram 偏好新加坡/香港，
-   * 加密货币偏好台湾/日本/新加坡。
+   * 通用业务跟随节点选择，AI 和金融组优先指定地区。
+   * 地区组仍会自动换节点；需要固定 IP 时在手动选择中选具体节点。
    */
 
   const REF = '节点选择'
 
   const GROUPS_BUILD = [
     {
+      name: 'Wise',
+      icon: '05icon/quanqiu.png',
+      type: 'select',
+      lists: ['英国节点', REF, '手动选择', 'DIRECT']
+    },
+    {
+      name: 'iFAST',
+      icon: '05icon/quanqiu.png',
+      type: 'select',
+      lists: ['英国节点', REF, '手动选择', 'DIRECT']
+    },
+    {
+      name: 'Neverless',
+      icon: '05icon/quanqiu.png',
+      type: 'select',
+      lists: ['美国节点', REF, '手动选择', 'DIRECT']
+    },
+    {
+      name: 'Speedtest',
+      icon: '05icon/lightning.png',
+      type: 'select',
+      lists: ['DIRECT', REF, '手动选择']
+    },
+    {
       name: 'AI服务',
       icon: '04ProxySoft/chatgpt4.0.png',
       type: 'select',
       lists: [
-        REF,
         '美国节点',
         '新加坡节点',
         '日本节点',
+        REF,
         '手动选择'
       ]
     },
@@ -413,10 +403,10 @@ function main(config) {
    * ============================================================ */
 
   /*
-   * 词库对齐 Egern 配置的排除列表。
+   * 只过滤明确的信息条目，避免“支持 / 时间 / 应急”等宽泛词误删节点。
    */
   const INFO_RE =
-    /套餐|订阅|到期|重置|剩余|续费|官网|网址|流量|频道|公告|失联|应急|过期|有效|时间|客户端|支持|群|电报|expire|traffic/i
+    /套餐|订阅|到期|重置|剩余|续费|官网|网址|流量|频道|公告|失联|过期|有效期|到期时间|客户端|交流群|电报群|expire|traffic/i
 
   const usable = config.proxies.filter((proxy) => {
     if (!proxy) return false
@@ -521,7 +511,7 @@ function main(config) {
   })
 
   /*
-   * 手动选择：直连 + 地区组 + 全部真实节点。
+   * 手动选择：自动选择 + 地区组 + 全部真实节点 + 直连。
    */
   groups.push({
     name: '手动选择',
@@ -530,15 +520,16 @@ function main(config) {
     type: 'select',
 
     proxies: [
-      'DIRECT',
+      '自动选择',
       ...regionGroups.map((item) => item.name),
-      ...proxyNames
+      ...proxyNames,
+      'DIRECT'
     ]
   })
 
   /*
    * 业务组：
-   * 第一项固定为节点选择（或直连优先类），
+   * 按各业务指定顺序选择默认候选，
    * 地区组仅在存在对应节点时加入。
    */
   for (const def of GROUPS_BUILD) {
@@ -677,19 +668,20 @@ function main(config) {
   )
 
   /* ============================================================
-   * 十六、CDN 与规则下载直连
+   * 十六、个人业务精确规则
+   * 不强制直连 jsDelivr / R2 整个后缀，交由常规分流和 Final。
+   * 金融域名参考 Egern 引用规则，仅保留明确域名，不采用关键词。
    * ============================================================ */
 
   rules.push(
-    'DOMAIN-SUFFIX,jsdelivr.net,DIRECT'
-  )
-
-  rules.push(
-    'DOMAIN-SUFFIX,r2.dev,DIRECT'
-  )
-
-  rules.push(
-    'DOMAIN-SUFFIX,cloudflare-r2.com,DIRECT'
+    'DOMAIN-SUFFIX,wise.com,Wise',
+    'DOMAIN-SUFFIX,moscwise.com,Wise',
+    'DOMAIN-SUFFIX,transferwise.com,Wise',
+    'DOMAIN,secure.fundsupermart.com,iFAST',
+    'DOMAIN-SUFFIX,ifastgb.com,iFAST',
+    'DOMAIN-SUFFIX,ifastcorp.com,iFAST',
+    'DOMAIN-SUFFIX,neverless.com,Neverless',
+    'RULE-SET,' + addRuleSet('ookla-speedtest') + ',Speedtest'
   )
 
   /* ============================================================
@@ -839,8 +831,8 @@ function main(config) {
 
     /*
      * 境外备用 DNS 改为纯 IP DoH：
-     * 不依赖自身域名解析，网络劣化时仍然可用。
-     * 请求遵守分流规则（respect-rules）经代理发出。
+     * 不依赖自身域名解析，但仍依赖 DNS 服务器及出口链路可用。
+     * 请求遵守分流规则（respect-rules），是否代理取决于命中策略。
      */
     fallback: [
       'https://1.1.1.1/dns-query',
@@ -849,7 +841,7 @@ function main(config) {
 
     /*
      * 先判定主 DNS 结果，满足 fallback-filter 才查询境外 DoH。
-     * v1 的 false 会让境外 DNS 抖动拖慢国内解析。
+     * true 减少备用查询；需要 fallback 时可能增加等待主查询的时间。
      */
     'fallback-lazy-query': true,
 
@@ -889,7 +881,7 @@ function main(config) {
     /*
      * 节点域名解析三路冗余：
      * 阿里 / 腾讯公共 DNS + 腾讯 DoT。
-     * 单一 DNS 故障时节点仍然可解析，不断流。
+     * 提供解析冗余，不保证节点连接或现有会话不中断。
      */
     'proxy-server-nameserver': [
       '223.5.5.5',
@@ -898,99 +890,36 @@ function main(config) {
     ],
 
     /*
-     * 以下域名返回真实 IP（合并参考配置的游戏 / 音乐 / NTP 列表）。
+     * 仅对局域网、联网检测、时间同步和部分游戏服务返回真实 IP。
      */
     'fake-ip-filter': [
+      'localhost',
       '*.lan',
       '*.local',
       '*.localhost',
       '*.localdomain',
       '*.home.arpa',
-
       '+.msftconnecttest.com',
       '+.msftncsi.com',
-
       '+.pool.ntp.org',
-      'time1.cloud.tencent.com',
-
-      'ntp.*.com',
-      'ntp1.*.com',
-      'ntp2.*.com',
-      'ntp3.*.com',
-      'ntp4.*.com',
-
       'time.*.com',
       'time.*.gov',
       'time.*.edu.cn',
-
       'time.*.apple.com',
-
-      'time1.*.com',
-      'time2.*.com',
-      'time3.*.com',
-      'time4.*.com',
-      'time5.*.com',
-      'time6.*.com',
-      'time7.*.com',
-
+      'ntp.*.com',
       'stun.*.*',
       'stun.*.*.*',
       '*.stun.*.*',
       '*.stun.*.*.*',
-      '+.stun.*.*.*',
-
-      'swscan.apple.com',
-      'swquery.apple.com',
-      'swdownload.apple.com',
-      'swcdn.apple.com',
-      'swdist.apple.com',
-      'mesu.apple.com',
-
-      '*.music.163.com',
-      'music.163.com',
-      '*.126.net',
-
-      'musicapi.taihe.com',
-      'music.taihe.com',
-
-      'songsearch.kugou.com',
-      'trackercdn.kugou.com',
-
-      '*.kuwo.cn',
-      '*.music.migu.cn',
-      'music.migu.cn',
-
-      'y.qq.com',
-      '*.y.qq.com',
-      'streamoc.music.tc.qq.com',
-      'mobileoc.music.tc.qq.com',
-      'isure.stream.qqmusic.qq.com',
-      'dl.stream.qqmusic.qq.com',
-      'aqqmusic.tc.qq.com',
-      'amobile.music.tc.qq.com',
-
-      '*.bilibili.com',
-      'api.bilibili.com',
-      '*.mcdn.bilivideo.cn',
-
-      'www.douyu.com',
-      'activityapi.huya.com',
-
       'localhost.ptlogin2.qq.com',
       'localhost.sec.qq.com',
-
-      'Mijia Cloud',
-      'dig.io.mi.com',
-
+      'lancache.steamcontent.com',
       '+.srv.nintendo.net',
       '+.stun.playstation.net',
       'xbox.*.microsoft.com',
-      '+.ipv6.microsoft.com',
-      '+.battlenet.com.cn',
-      '+.pvp.net',
-      '+.media.dssott.com',
-
-      'proxy.golang.org'
+      '+.xboxlive.com',
+      '+.logon.battlenet.com.cn',
+      '+.logon.battle.net'
     ],
 
     /*
@@ -1085,6 +1014,7 @@ function main(config) {
        * 保留策略组选择与 Fake-IP 映射。
        */
       profile: {
+        ...(config.profile || {}),
         'store-selected': true,
         'store-fake-ip': true
       },
