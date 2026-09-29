@@ -1,6 +1,10 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v4（2026-09-28）
+ * Clash Party / Mihomo Party 个人覆写 v4.1（2026-09-28）
+ *
+ * v4.1：图标本地化——30 个图标打包进本仓库 icons/，与配置同源加载
+ *   （raw.githubusercontent.com），不再依赖第三方图标 CDN，
+ *   解决部分组图标间歇缺失；Wise / Speedtest 等改用库内专属图标。
  *
  * v4：对齐个人 Egern 分流（Tools/Egern/Egern.yaml）：
  *   - 新增香港银行与券商分流（ZA / Livi / 中银 / 汇丰 / 恒生 / 花旗 / 天星 /
@@ -40,7 +44,7 @@ function main(config) {
    * ============================================================ */
 
   const ICON =
-    'https://cdn.jsdelivr.net/gh/lige47/lige_icon@main/icon/'
+    'https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/icons/'
 
   const RSET =
     'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/'
@@ -80,37 +84,37 @@ function main(config) {
   const REGION_DEFS = [
     {
       name: '香港节点',
-      icon: '01Country/Hongkong.png',
+      icon: 'hk.png',
       regex: /香港|Hong ?Kong|\bHK\b|\bHKG\b|🇭🇰/i
     },
 
     {
       name: '台湾节点',
-      icon: '01Country/taiwan.png',
+      icon: 'tw.png',
       regex: /台湾|臺灣|Taiwan|\bTW\b|🇹🇼/i
     },
 
     {
       name: '日本节点',
-      icon: '01Country/Japan(1).png',
+      icon: 'jp.png',
       regex: /日本|东京|東京|大阪|Japan|\bJP\b|🇯🇵/i
     },
 
     {
       name: '新加坡节点',
-      icon: '01Country/singapore.png',
+      icon: 'sg.png',
       regex: /新加坡|狮城|獅城|Singapore|\bSG\b|🇸🇬/i
     },
 
     {
       name: '韩国节点',
-      icon: '01Country/Korea.png',
+      icon: 'kr.png',
       regex: /韩国|韓國|首尔|首爾|Korea|\bKR\b|🇰🇷/i
     },
 
     {
       name: '美国节点',
-      icon: '01Country/US.png',
+      icon: 'us.png',
       regex:
         /美国|美國|洛杉矶|洛杉磯|圣何塞|聖荷西|西雅图|西雅圖|凤凰城|鳳凰城|United ?States|America|\bUS\b|\bUSA\b|🇺🇸/i
     },
@@ -121,46 +125,46 @@ function main(config) {
      */
     {
       name: '英国节点',
-      icon: '01Country/UnitedKingdom.png',
+      icon: 'uk.png',
       regex: /英国|英國|伦敦|倫敦|United ?Kingdom|\bUK\b|🇬🇧/i
     },
 
     {
       name: '德国节点',
-      icon: '01Country/Germany.png',
+      icon: 'de.png',
       regex: /德国|德國|法兰克福|法蘭克福|Germany|\bDE\b|🇩🇪/i
     },
 
     {
       name: '法国节点',
       /*
-       * lige_icon / QuanX-icon-rule 两个库都没有法国国旗，
-       * 使用 flagcdn 的 PNG（已实测 200）。
+       * 法国国旗两个图标库都没有，
+       * 已从外部源打包为本仓库 fr.png。
        */
-      icon: 'https://flagcdn.com/w320/fr.png',
+      icon: 'fr.png',
       regex: /法国|法國|巴黎|France|\bFR\b|🇫🇷/i
     },
 
     /*
      * v4：菲律宾 / 土耳其 / 尼日利亚，对齐 Egern 的 PH / TR / NG 组。
      * 用途：Maya 分流与 Google 组的地区候选；
-     * 无对应节点时自动隐藏。图标按法国先例使用 flagcdn。
+     * 无对应节点时自动隐藏。图标已打包进本仓库 icons/。
      */
     {
       name: '菲律宾节点',
-      icon: 'https://flagcdn.com/w320/ph.png',
+      icon: 'ph.png',
       regex: /菲律宾|菲律賓|马尼拉|馬尼拉|Philippines|Manila|\bPH\b|\bMNL\b|🇵🇭/i
     },
 
     {
       name: '土耳其节点',
-      icon: 'https://flagcdn.com/w320/tr.png',
+      icon: 'tr.png',
       regex: /土耳其|伊斯坦布尔|伊斯坦堡|Turkey|Türkiye|\bTR\b|\bIST\b|🇹🇷/i
     },
 
     {
       name: '尼日利亚节点',
-      icon: 'https://flagcdn.com/w320/ng.png',
+      icon: 'ng.png',
       regex: /尼日利亚|尼日利亞|拉各斯|Lagos|Nigeria|\bNG\b|🇳🇬/i
     }
   ]
@@ -181,31 +185,31 @@ function main(config) {
   const GROUPS_BUILD = [
     {
       name: 'Wise',
-      icon: '05icon/quanqiu.png',
+      icon: 'wise.png',
       type: 'select',
       lists: ['英国节点', REF, '手动选择', 'DIRECT']
     },
     {
       name: 'iFAST',
-      icon: '05icon/quanqiu.png',
+      icon: 'quanqiu.png',
       type: 'select',
       lists: ['英国节点', REF, '手动选择', 'DIRECT']
     },
     {
       name: 'Neverless',
-      icon: '05icon/quanqiu.png',
+      icon: 'quanqiu-1.png',
       type: 'select',
       lists: ['美国节点', REF, '手动选择', 'DIRECT']
     },
     {
       name: 'Speedtest',
-      icon: '05icon/lightning.png',
+      icon: 'speedtest.png',
       type: 'select',
       lists: ['DIRECT', REF, '手动选择']
     },
     {
       name: 'AI服务',
-      icon: '04ProxySoft/chatgpt4.0.png',
+      icon: 'chatgpt4.0.png',
       type: 'select',
       lists: [
         '美国节点',
@@ -218,7 +222,7 @@ function main(config) {
 
     {
       name: 'Telegram',
-      icon: '04ProxySoft/telegram.png',
+      icon: 'telegram.png',
       type: 'select',
       lists: [
         REF,
@@ -230,7 +234,7 @@ function main(config) {
 
     {
       name: '加密货币',
-      icon: '04ProxySoft/Bitcoin.png',
+      icon: 'Bitcoin.png',
       type: 'select',
       /*
        * v4：候选顺序对齐 Egern Crypto（HK, US, TW, JP, SG）。
@@ -249,7 +253,7 @@ function main(config) {
 
     {
       name: '国外媒体',
-      icon: '05icon/play.png',
+      icon: 'play.png',
       type: 'select',
       lists: [
         REF,
@@ -268,7 +272,7 @@ function main(config) {
        * v4：自国外媒体拆出，对齐 Egern TikTok 组（US, JP, SG）。
        * TikTok 对出口 IP 地区敏感，独立控制。
        */
-      icon: '04ProxySoft/tiktok.png',
+      icon: 'tiktok.png',
       type: 'select',
       lists: [
         '美国节点',
@@ -281,7 +285,7 @@ function main(config) {
 
     {
       name: '国内媒体',
-      icon: '03CNSoft/bilibili.png',
+      icon: 'bilibili.png',
       type: 'select',
       lists: [
         'DIRECT',
@@ -291,7 +295,7 @@ function main(config) {
 
     {
       name: 'Apple',
-      icon: '03CNSoft/apple.png',
+      icon: 'apple.png',
       type: 'select',
       lists: [
         'DIRECT',
@@ -304,7 +308,7 @@ function main(config) {
 
     {
       name: 'Google',
-      icon: '04ProxySoft/google.png',
+      icon: 'google.png',
       type: 'select',
       /*
        * v4：补 土耳其 / 尼日利亚 候选，对齐 Egern Google 组（HK, US, TR, NG），
@@ -322,7 +326,7 @@ function main(config) {
 
     {
       name: 'Microsoft',
-      icon: '03CNSoft/microsoft.png',
+      icon: 'microsoft.png',
       type: 'select',
       lists: [
         'DIRECT',
@@ -335,7 +339,7 @@ function main(config) {
 
     {
       name: 'GitHub',
-      icon: '04ProxySoft/github.png',
+      icon: 'github.png',
       type: 'select',
       lists: [
         REF,
@@ -546,7 +550,7 @@ function main(config) {
     name: region.name,
 
     /*
-     * 完整 URL 直接使用；否则拼接 lige_icon 前缀。
+     * 完整 URL 直接使用；否则拼接 ICON 前缀。
      */
     icon: region.icon.startsWith('http')
       ? region.icon
@@ -571,7 +575,7 @@ function main(config) {
    */
   groups.push({
     name: REF,
-    icon: ICON + '05icon/rocket.png',
+    icon: ICON + 'rocket.png',
 
     type: 'select',
 
@@ -589,7 +593,7 @@ function main(config) {
    */
   groups.push({
     name: '自动选择',
-    icon: ICON + '05icon/lightning.png',
+    icon: ICON + 'lightning.png',
 
     type: 'url-test',
 
@@ -603,7 +607,7 @@ function main(config) {
    */
   groups.push({
     name: '手动选择',
-    icon: ICON + '05icon/jichang.png',
+    icon: ICON + 'jichang.png',
 
     type: 'select',
 
@@ -658,7 +662,7 @@ function main(config) {
 
   groups.push({
     name: 'Final',
-    icon: ICON + '05icon/quanqiu.png',
+    icon: ICON + 'quanqiu-2.png',
 
     type: 'select',
 
