@@ -1,6 +1,21 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v4.1（2026-09-28）
+ * Clash Party / Mihomo Party 个人覆写 v4.2（2026-10-03）
+ *
+ * v4.2：稳定性优化，目标是"尽量不断流"：
+ *   1. 规则集源改用 testingcf.jsdelivr.net（jsDelivr 的 Cloudflare
+ *      边缘域，大陆直连可达性优于主域，mihomo 官方 Wiki geox
+ *      示例同款域名），降低规则更新失败导致分流回退的概率；
+ *   2. url-test tolerance 80 → 150：节点延迟抖动时不轻易主动切换，
+ *      每次切换都会中断既有连接（下载 / 视频 / 长连接有感）；
+ *   3. QUIC 屏蔽规则后移到大陆直连规则之后：国内 QUIC（抖音 /
+ *      B 站 / 微信等）恢复正常使用，仅境外 QUIC 强制回落 TCP；
+ *   4. DNS 新增 nameserver-policy（rule-set:geosite-cn → 国内 DoH），
+ *      官方 Wiki 推荐写法，大陆域名解析不再依赖 fallback 判定；
+ *   5. proxy-server-nameserver 换用加密 DoH（纯 IP 直连，无需引导
+ *      解析），节点域名解析抗污染，降低"节点失联"型断流；
+ *   6. sniffer.skip-domain 补 Mijia Cloud（官方示例），
+ *      fake-ip-filter 补 +.market.xiaomi.com，减少智能设备异常。
  *
  * v4.1：图标本地化——30 个图标打包进本仓库 icons/，与配置同源加载
  *   （raw.githubusercontent.com），不再依赖第三方图标 CDN，
@@ -46,12 +61,19 @@ function main(config) {
   const ICON =
     'https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/icons/'
 
+  /*
+   * v4.2：testingcf 为 jsDelivr 的 Cloudflare 边缘域，
+   * 大陆直连可达性优于 cdn.jsdelivr.net 主域。
+   */
   const RSET =
-    'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/'
+    'https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/'
 
-  /* dler-io Crypto 规则集（classical，含交易所/行情/Web3 域名） */
+  /*
+   * dler-io Crypto 规则集（classical，含交易所/行情/Web3 域名）。
+   * v4.2：同步切换 testingcf 域。
+   */
   const CRYPTO_DLER =
-    'https://cdn.jsdelivr.net/gh/dler-io/Rules@main/Clash/Provider/Crypto.yaml'
+    'https://testingcf.jsdelivr.net/gh/dler-io/Rules@main/Clash/Provider/Crypto.yaml'
 
   /* ============================================================
    * 二、测速参数
@@ -71,7 +93,9 @@ function main(config) {
     'max-failed-times': 2,
 
     // 健康节点间的切换容差；当前节点测速不存活时另行切换。
-    tolerance: 80,
+    // v4.2：80 → 150，节点延迟抖动时不轻易切换，
+    // 每次切换都会中断既有连接，稳定优先于极致延迟。
+    tolerance: 150,
 
     // 只有策略组真正被使用时才测速
     lazy: true
@@ -467,6 +491,8 @@ function main(config) {
    * 拒绝 UDP 443 使 QUIC 回落 TCP：
    * TUN 下 QUIC 难以正确代理，且嗅探与分流对 TCP 更可靠。
    * 浏览器与主流 App 会自动回落，个别游戏如异常可改为 false。
+   * v4.2：规则插入位置后移到大陆直连之后（见"二十三"段），
+   * 国内 QUIC 不再被误伤，仅境外 QUIC 强制回落。
    */
   const BLOCK_QUIC = true
 
@@ -754,7 +780,7 @@ function main(config) {
   )
 
   /* ============================================================
-   * 十七、反诈与 QUIC（对齐 Egern）
+   * 十七、反诈（对齐 Egern）
    * ============================================================ */
 
   /*
@@ -765,11 +791,10 @@ function main(config) {
     'DOMAIN-SUFFIX,gjfzpt.cn,REJECT'
   )
 
-  if (BLOCK_QUIC) {
-    rules.push(
-      'AND,((NETWORK,udp),(DST-PORT,443)),REJECT'
-    )
-  }
+  /*
+   * v4.2：QUIC 屏蔽不再在此处全局拦截（原位置会连同国内
+   * QUIC 一起拒绝），改为置于"二十三、中国大陆直连"之后。
+   */
 
   /* ============================================================
    * 十八、个人业务精确规则
@@ -1044,6 +1069,19 @@ function main(config) {
     ',DIRECT,no-resolve'
   )
 
+  /*
+   * v4.2：QUIC 屏蔽后移至此处。
+   * 大陆域名 / IP 的 UDP 443 已被上方 DIRECT 规则接住，正常走 QUIC；
+   * 走到这里的是境外（或未命中任何规则的）流量，拒绝 UDP 443
+   * 强制回落 TCP(TLS)：TUN 下代理 TCP 更稳，嗅探与分流更可靠，
+   * 同时国内 QUIC 直连不受影响（对齐 block_quic，仅作用于境外）。
+   */
+  if (BLOCK_QUIC) {
+    rules.push(
+      'AND,((NETWORK,udp),(DST-PORT,443)),REJECT'
+    )
+  }
+
   /* ============================================================
    * 二十四、最终兜底
    * ============================================================ */
@@ -1083,7 +1121,19 @@ function main(config) {
       '+.lan': 'system',
       '+.local': 'system',
       '+.localdomain': 'system',
-      '+.home.arpa': 'system'
+      '+.home.arpa': 'system',
+
+      /*
+       * v4.2：大陆域名显式走国内 DoH（官方 Wiki 示例写法，
+       * 引用本配置已有的 geosite-cn 规则集）。
+       * nameserver-policy 优先级高于 nameserver / fallback，
+       * 大陆域名解析不再等待 fallback 判定，直连出结果更快更稳；
+       * 境外域名继续由 nameserver + fallback-filter 兜底。
+       */
+      'rule-set:geosite-cn': [
+        'https://dns.alidns.com/dns-query',
+        'https://doh.pub/dns-query'
+      ]
     },
 
     /*
@@ -1142,13 +1192,15 @@ function main(config) {
 
     /*
      * 节点域名解析三路冗余：
-     * 阿里 / 腾讯公共 DNS + 腾讯 DoT。
-     * 提供解析冗余，不保证节点连接或现有会话不中断。
+     * v4.2：前两路改为纯 IP 加密 DoH（阿里 / 腾讯，证书含 IP SAN，
+     * 无需引导解析，不受 respect-rules 影响），节点域名解析
+     * 不再受明文 53 劫持污染影响，降低"节点域名解析被污染 →
+     * 连不上节点 → 断流"的概率；保留明文 119.29.29.29 兜底。
      */
     'proxy-server-nameserver': [
-      '223.5.5.5',
-      '119.29.29.29',
-      'tls://120.53.53.53'
+      'https://223.5.5.5/dns-query',
+      'https://120.53.53.53/dns-query',
+      '119.29.29.29'
     ],
 
     /*
@@ -1181,7 +1233,13 @@ function main(config) {
       'xbox.*.microsoft.com',
       '+.xboxlive.com',
       '+.logon.battlenet.com.cn',
-      '+.logon.battle.net'
+      '+.logon.battle.net',
+
+      /*
+       * v4.2：小米应用商店（官方示例 fake-ip-filter 项），
+       * 避免 App 内下载校验取到 fake-ip。
+       */
+      '+.market.xiaomi.com'
     ],
 
     /*
@@ -1232,10 +1290,12 @@ function main(config) {
     },
 
     /*
-     * Apple Push 不嗅探。
+     * Apple Push 不嗅探；v4.2：补 Mijia Cloud（官方示例，
+     * 米家设备控制域被嗅探改写会导致设备控制异常）。
      */
     'skip-domain': [
-      '+.push.apple.com'
+      '+.push.apple.com',
+      'Mijia Cloud'
     ]
   }
 
@@ -1293,3 +1353,4 @@ function main(config) {
     }
   )
 }
+
