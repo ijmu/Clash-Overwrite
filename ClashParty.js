@@ -1,6 +1,19 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v4.2（2026-10-03）
+ * Clash Party / Mihomo Party 个人覆写 v4.3（2026-10-03）
+ *
+ * v4.3：DNS 防泄露加固（实测发现局部泄露面）：
+ *   实测：o-o.myaddr.l.google.com TXT 回显 36.251.248.27（国内出口），
+ *   即 mihomo 本机真实解析境外域名时（TXT / 直连境外域名等），
+ *   查询先发给国内递归（阿里 / 腾讯），境外域名可见于国内 DNS。
+ *   优化：
+ *   1. nameserver-policy 新增 rule-set:geolocation-!cn → 境外加密 DoH
+ *      （respect-rules 下自动经代理），已分类境外域名的本机解析
+ *      不再经过任何国内递归；
+ *   2. default-nameserver 改用加密 DoT（tls://223.5.5.5 等，纯 IP），
+ *      引导解析不再走明文 53；
+ *   3. fake-ip + 远端解析的代理流量本身无泄露（实测确认），本版
+ *      补齐的是"本机必须真实解析"的那部分境外域名。
  *
  * v4.2：稳定性优化，目标是"尽量不断流"：
  *   1. 规则集源改用 testingcf.jsdelivr.net（jsDelivr 的 Cloudflare
@@ -1108,9 +1121,10 @@ function main(config) {
     'prefer-h3': false,
 
     /*
-     * 国内 DNS：负责绝大部分解析。
+     * 默认解析器：仅兜底处理未被 nameserver-policy 命中的域名
+     * （geosite 尚未收录的新域名等极少数情况）。
      * v4：改为国产加密 DoH（对齐 Egern Domestic-Encrypted-DNS），
-     * 自身域名由 default-nameserver 纯 IP 引导。
+     * 自身域名由 default-nameserver 引导。
      */
     nameserver: [
       'https://dns.alidns.com/dns-query',
@@ -1133,6 +1147,18 @@ function main(config) {
       'rule-set:geosite-cn': [
         'https://dns.alidns.com/dns-query',
         'https://doh.pub/dns-query'
+      ],
+
+      /*
+       * v4.3：境外域名显式走境外加密 DoH（respect-rules 下
+       * 自动经代理连接 1.1.1.1 / 8.8.8.8），国内递归 DNS
+       * 不再收到任何已分类境外域名的查询，封堵本机解析泄露面。
+       * 顺序：geosite-cn 在前，双收录域名（apple / microsoft 等
+       * 有国内业务的）优先按国内解析，行为与 v4.2 保持一致。
+       */
+      ['rule-set:' + addRuleSet('geolocation-!cn')]: [
+        'https://1.1.1.1/dns-query',
+        'https://8.8.8.8/dns-query'
       ]
     },
 
@@ -1184,23 +1210,27 @@ function main(config) {
 
     /*
      * 用于解析 DNS 服务器自身域名。
+     * v4.3：改用加密 DoT（纯 IP 直连，证书含 IP SAN，
+     * mihomo 官方 Wiki 示例同款写法），引导解析不再走明文 53。
      */
     'default-nameserver': [
-      '223.5.5.5',
-      '119.29.29.29'
+      'tls://223.5.5.5',
+      'tls://120.53.53.53'
     ],
 
     /*
      * 节点域名解析三路冗余：
-     * v4.2：前两路改为纯 IP 加密 DoH（阿里 / 腾讯，证书含 IP SAN，
+     * v4.2：改用纯 IP 加密 DoH（阿里 / 腾讯，证书含 IP SAN，
      * 无需引导解析，不受 respect-rules 影响），节点域名解析
      * 不再受明文 53 劫持污染影响，降低"节点域名解析被污染 →
-     * 连不上节点 → 断流"的概率；保留明文 119.29.29.29 兜底。
+     * 连不上节点 → 断流"的概率；
+     * v4.3：三路全部加密（节点域名是最敏感的查询，
+     * 明文兜底也会暴露使用代理的事实，故移除）。
      */
     'proxy-server-nameserver': [
       'https://223.5.5.5/dns-query',
       'https://120.53.53.53/dns-query',
-      '119.29.29.29'
+      'tls://223.6.6.6'
     ],
 
     /*
