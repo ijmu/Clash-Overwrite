@@ -1,6 +1,15 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v4.3（2026-10-03）
+ * Clash Party / Mihomo Party 个人覆写 v4.4（2026-10-03）
+ *
+ * v4.4：图标优化——
+ *   1. iFAST / Neverless 换用官方品牌图标（App Store 官方应用图标
+ *      512px → 144x144 圆角，随配置同仓库 icons/ 下发），
+ *      替代原通用"全球"图标；
+ *   2. 图标源由 raw.githubusercontent.com 切换为
+ *      testingcf.jsdelivr.net（Cloudflare 边缘，与规则集同源），
+ *      根治 v4.1 起图标间歇缺失的网络层原因；
+ *   3. quanqiu.png / quanqiu-1.png 保留于仓库不再被引用，可留可删。
  *
  * v4.3：DNS 防泄露加固（实测发现局部泄露面）：
  *   实测：o-o.myaddr.l.google.com TXT 回显 36.251.248.27（国内出口），
@@ -71,8 +80,13 @@ function main(config) {
    * 一、基础地址
    * ============================================================ */
 
+  /*
+   * v4.4：图标源切换 testingcf.jsdelivr.net（jsDelivr Cloudflare 边缘，
+   * 与规则集同源同域），raw.githubusercontent.com 在大陆间歇不可达，
+   * 是图标偶发缺失的根因；新上传图标无缓存直出，存量图标走 CDN 缓存。
+   */
   const ICON =
-    'https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/icons/'
+    'https://testingcf.jsdelivr.net/gh/ijmu/Clash-Overwrite@main/icons/'
 
   /*
    * v4.2：testingcf 为 jsDelivr 的 Cloudflare 边缘域，
@@ -228,13 +242,21 @@ function main(config) {
     },
     {
       name: 'iFAST',
-      icon: 'quanqiu.png',
+      /*
+       * v4.4：官方 iFAST Global Bank 品牌图标
+       * （App Store com.ifast.gb → 144x144 圆角）。
+       */
+      icon: 'ifast.png',
       type: 'select',
       lists: ['英国节点', REF, '手动选择', 'DIRECT']
     },
     {
       name: 'Neverless',
-      icon: 'quanqiu-1.png',
+      /*
+       * v4.4：官方 Neverless 品牌图标
+       * （App Store → 144x144 圆角）。
+       */
+      icon: 'neverless.png',
       type: 'select',
       lists: ['美国节点', REF, '手动选择', 'DIRECT']
     },
