@@ -1,6 +1,27 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v4.4（2026-10-03）
+ * Clash Party / Mihomo Party 个人覆写 v4.5（2026-10-03）
+ *
+ * v4.5：吸收社区优秀实践（对标 xinw597 / YangYuS8 / Smart-Config-Kit /
+ *   adsryen：其 DNS 分层架构与 v4.3 已同构，仅并差异项），全部为增量，
+ *   不改动既有业务规则：
+ *   1. uTLS 指纹逐节点注入：vmess/vless/trojan 缺省时补 'chrome'
+ *      （global-client-fingerprint 已弃用，逐节点注入是官方替代），
+ *      抗主动探测与 SNI 干扰，直指"不断流"；
+ *   2. Steam 下载 CDN 直连（YangYuS8/steam-download-direct-rules）：
+ *      仅 steamcontent/steamserver/steampipe 等下载域直连，
+ *      商店 / 社区仍走代理，大流量下载不再占用机场线路；
+ *   3. BT/P2P 防误走代理：常见下载器进程与公共 tracker 直连
+ *      （机场普遍禁 BT），并 REJECT Windows 交付优化端口 7680；
+ *   4. fake-ip-filter 扩充：微信 / QQ（语音与登录对 DNS 敏感）、
+ *      ToDesk / TeamViewer / AnyDesk / RustDesk / 向日葵（远程工具）、
+ *      Tailscale / ZeroTier（mesh VPN 需真实 IP）；
+ *   5. sniffer 豁免向日葵域（+.oray.com / +.oray.net，远控防误伤）；
+ *   6. AI服务 补 category-ai-!cn 未覆盖域名
+ *      （stability / replicate / together / suno / runpod）。
+ *   评估后未采纳：keep-alive 600/1800（移动省电向，桌面需求相反）、
+ *   HTTPDNS 拦截（行为风险大于收益）、大站 real-ip（fake-ip 直连无收益）、
+ *   社交/游戏细分规则集（Final 兜底足够，省 provider）。
  *
  * v4.4：图标优化——
  *   1. iFAST / Neverless 换用官方品牌图标（App Store 官方应用图标
@@ -574,6 +595,21 @@ function main(config) {
 
   const proxyNames = usable.map((proxy) => proxy.name)
 
+  /*
+   * v4.5：uTLS 指纹逐节点注入（xinw597 实践）。
+   * global-client-fingerprint 已被官方弃用，逐节点注入 client-fingerprint
+   * 是官方替代路径：对未自带指纹的 vmess / vless / trojan 补 'chrome'，
+   * 使 TLS 握手特征与主流浏览器一致，抗主动探测与 SNI 干扰——
+   * 减少"节点 IP 未变却莫名连不上 / 频繁重置"型断流。
+   * 仅注入 TLS 系协议；ss / hysteria2 / tuic 等不适用，保持原样。
+   */
+  const FP_TYPES = { vmess: 1, vless: 1, trojan: 1 }
+  for (const p of usable) {
+    if (p && FP_TYPES[p.type] && !p['client-fingerprint']) {
+      p['client-fingerprint'] = 'chrome'
+    }
+  }
+
   /* ============================================================
    * 十一、节点地区归类
    * ============================================================ */
@@ -799,8 +835,35 @@ function main(config) {
   }
 
   /* ============================================================
-   * 十六、局域网直连
+   * 十六、本机防护与局域网直连
    * ============================================================ */
+
+  /*
+   * v4.5：BT/P2P 防误走代理（xinw597 实践）。
+   * 机场普遍禁止 BT，误走代理有封号风险且拖慢下载；
+   * tracker 直连同时避免把代理出口 IP 上报给 tracker。
+   * 仅匹配下载器进程与 tracker 域，不影响任何其他流量。
+   */
+  rules.push(
+    'PROCESS-NAME,qbittorrent.exe,DIRECT',
+    'PROCESS-NAME,BitComet.exe,DIRECT',
+    'PROCESS-NAME,uTorrent.exe,DIRECT',
+    'PROCESS-NAME,transmission-qt.exe,DIRECT',
+    'PROCESS-NAME,aria2c.exe,DIRECT',
+    'PROCESS-NAME,Thunder.exe,DIRECT'
+  )
+
+  rules.push(
+    'RULE-SET,' +
+    addRuleSet('category-public-tracker') +
+    ',DIRECT'
+  )
+
+  /*
+   * v4.5：Windows 交付优化（P2P 上传，端口 7680）拒绝，
+   * 减少无意义的上传占用与电耗。
+   */
+  rules.push('DST-PORT,7680,REJECT')
 
   rules.push(
     'RULE-SET,' +
@@ -861,6 +924,31 @@ function main(config) {
     'DOMAIN-SUFFIX,ifastcorp.com,iFAST',
     'DOMAIN-SUFFIX,neverless.com,Neverless',
     'RULE-SET,' + addRuleSet('ookla-speedtest') + ',Speedtest'
+  )
+
+  /*
+   * v4.5：Steam 下载 CDN 直连
+   * （域名清单取自 YangYuS8/steam-download-direct-rules，仅收下载域）。
+   * 登录 / 商店 / 社区（steampowered.com / steamcommunity.com 等）
+   * 不在清单内，仍走原分流（Final → 代理），客户端不会离线；
+   * 游戏更新与国服下载不再占用代理线路。
+   */
+  rules.push(
+    'DOMAIN-SUFFIX,steamcontent.com,DIRECT',
+    'DOMAIN-SUFFIX,steamserver.net,DIRECT',
+    'DOMAIN,steamcdn-a.akamaihd.net,DIRECT',
+    'DOMAIN,steampipe.akamaized.net,DIRECT',
+    'DOMAIN,steampipe-partner.akamaized.net,DIRECT',
+    'DOMAIN,steampipe-kr.akamaized.net,DIRECT',
+    'DOMAIN-SUFFIX,wmsjsteam.com,DIRECT',
+    'DOMAIN-SUFFIX,steamchina.com,DIRECT',
+    'DOMAIN-SUFFIX,8686c.com,DIRECT',
+    'DOMAIN,client-update.queniuqe.com,DIRECT',
+    'DOMAIN,dl.steam.clngaa.com,DIRECT',
+    'DOMAIN,dl.steam.ksyna.com,DIRECT',
+    'DOMAIN,st.dl.bscstorage.net,DIRECT',
+    'DOMAIN,st.dl.eccdnx.com,DIRECT',
+    'DOMAIN,st.dl.pinyuncloud.com,DIRECT'
   )
 
   /* ============================================================
@@ -1034,6 +1122,20 @@ function main(config) {
       )
     }
   }
+
+  /*
+   * v4.5：AI服务 补充域名（xinw597 实践）。
+   * category-ai-!cn 未收录的开发者向 AI 平台，
+   * 归入 AI服务 组统一管理地区；此前它们落在 Final 兜底。
+   */
+  rules.push(
+    'DOMAIN-SUFFIX,stability.ai,AI服务',
+    'DOMAIN-SUFFIX,replicate.com,AI服务',
+    'DOMAIN-SUFFIX,together.ai,AI服务',
+    'DOMAIN-SUFFIX,suno.ai,AI服务',
+    'DOMAIN-SUFFIX,suno.com,AI服务',
+    'DOMAIN-SUFFIX,runpod.io,AI服务'
+  )
 
   /*
    * v4：TikTok 独立分流（原属国外媒体）。
@@ -1291,7 +1393,28 @@ function main(config) {
        * v4.2：小米应用商店（官方示例 fake-ip-filter 项），
        * 避免 App 内下载校验取到 fake-ip。
        */
-      '+.market.xiaomi.com'
+      '+.market.xiaomi.com',
+
+      /*
+       * v4.5：微信 / QQ 语音与登录对 DNS 结果敏感，返回真实 IP
+       * （域名属 cn 分类，解析仍走国内 DoH，无泄露）。
+       */
+      '+.qq.com',
+      '+.wechat.com',
+      '+.weixinbridge.com',
+
+      /*
+       * v4.5：远程工具与 mesh VPN 依赖 NAT 类型探测与真实对端信息，
+       * fake-ip 会导致打洞失败 / 控制连接异常，返回真实 IP。
+       */
+      '+.todesk.com',
+      '+.teamviewer.com',
+      '+.anydesk.com',
+      '+.rustdesk.com',
+      '+.oray.com',
+      '+.sunlogin.com',
+      '+.tailscale.com',
+      '+.zerotier.com'
     ],
 
     /*
@@ -1343,11 +1466,14 @@ function main(config) {
 
     /*
      * Apple Push 不嗅探；v4.2：补 Mijia Cloud（官方示例，
-     * 米家设备控制域被嗅探改写会导致设备控制异常）。
+     * 米家设备控制域被嗅探改写会导致设备控制异常）；
+     * v4.5：补向日葵远控域（adsryen 实践，嗅探干扰远控连接）。
      */
     'skip-domain': [
       '+.push.apple.com',
-      'Mijia Cloud'
+      'Mijia Cloud',
+      '+.oray.com',
+      '+.oray.net'
     ]
   }
 
