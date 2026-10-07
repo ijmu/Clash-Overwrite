@@ -20,22 +20,27 @@ Clash-Overwrite/
 主要包含：
 
 * 自动节点测速与选择
+* 其他节点动态分组（未识别地区节点自动归组）
 * 香港、台湾、日本、新加坡、韩国、美国自动分组
 * AI 服务独立分流
 * 加密货币 / Web3 独立分流
 * 国内外流媒体分流
 * Apple / Google / Microsoft / GitHub 独立分流
 * 中国大陆流量直连
+* 游戏平台国内域名直连（category-games@cn）
 * 腾讯系域名直连（修复微信群头像 / 聊天图片加载）
 * Fake-IP DNS
 * 国内 DNS + 国外 DoH Fallback
 * DNS Respect Rules
+* DIRECT 出口独立国内 DNS（direct-nameserver）
+* NTP 内核校时（抗 hysteria2 / tuic 时间鉴权断流）
 * Sniffer 域名嗅探
 * TCP Concurrent
 * Fake-IP 持久化
 * MetaCubeX MRS 规则集
-* 规则集自动更新
+* 规则集自动更新（ETag 增量拉取）
 * 自动过滤机场流量、到期时间等信息节点
+* uTLS 指纹逐节点注入（vmess / vless / trojan）
 
 ---
 
@@ -74,6 +79,20 @@ https://raw.githubusercontent.com/ijmu/Clash-Overwrite/main/ClashParty.js
 保存并开启全局覆写。
 
 订阅更新后，脚本会根据当前节点重新生成 Mihomo 配置。
+
+## 必要的客户端设置（v5.0 起）
+
+Clash Party 的客户端接管项优先级高于覆写脚本。为了让脚本内的 DNS 与嗅探优化真正生效，需要：
+
+```text
+Clash Party 设置
+→ 关闭「控制 DNS 设置」
+→ 关闭「控制域名嗅探」
+接管配置
+→ ipv6: false
+```
+
+（实践同款提示来自 powerfullz/override-rules：客户端接管 DNS / SNI 时，覆写脚本的 DNS 分层架构会被架空，表现为 DNS 泄露与解析变慢。）
 
 > 如果同时启用其他全局覆写、订阅转换脚本或 DNS 覆写，可能出现策略组、规则或 DNS 相互覆盖的问题。
 
@@ -142,7 +161,7 @@ config.proxies
 写入规则与 DNS
 ```
 
-没有对应节点的地区组会自动隐藏。
+没有对应节点的地区组会自动隐藏；未被地区规则识别的节点自动归入「其他节点」组（v5.0 起）。
 
 ## FlClash.js
 
@@ -171,6 +190,7 @@ proxy-providers
 | --------- | -------- | --------------------------------------- |
 | 自动选择      | url-test | 从所有真实节点直接选择延迟较优节点                       |
 | 手动选择      | select   | 手动选择地区组或具体节点                            |
+| 其他节点      | url-test | 未被地区规则识别节点的自动测速组（v5.0 起，无成员时隐藏）         |
 | AI服务      | select   | ChatGPT、Claude、Gemini、Grok、Perplexity 等 |
 | 加密货币      | select   | Crypto、交易所、Web3 服务                      |
 | 国外媒体      | select   | YouTube、Netflix、Disney+、HBO、Spotify 等   |
@@ -313,8 +333,9 @@ Google DoH
 `proxy-server-nameserver`：
 
 ```text
-223.5.5.5
-119.29.29.29
+https://223.5.5.5/dns-query
+https://120.53.53.53/dns-query
+tls://223.6.6.6
 ```
 
 这里没有混入：
@@ -325,25 +346,40 @@ system
 
 用于减少不同操作系统、路由器或网络环境 DNS 不一致造成的解析波动。
 
+## DIRECT 出口 DNS（v5.0 新增）
+
+`direct-nameserver`：
+
+```text
+https://223.5.5.5/dns-query
+https://120.53.53.53/dns-query
+```
+
+DIRECT 出口域名（Steam 下载 CDN / 腾讯 / 苹果 CN / 游戏平台 CN 等本机必须真实解析的直连域名）固定走国内加密递归，首连更快；`direct-nameserver-follow-policy: false` 保证直连解析不受 nameserver-policy 影响，行为可预期——否则 steamcontent.com 这类同时收录于 `geolocation-!cn` 的直连域名会被送往境外 DoH 绕代理解析一圈。
+
+## NTP 校时（v5.0 新增）
+
+```yaml
+ntp:
+  enable: true
+  server: ntp.aliyun.com
+  port: 123
+  interval: 30
+```
+
+内核每 30 分钟校一次时间。系统时间漂移过大时，hysteria2 / tuic 等基于时间的鉴权会整体失败，表现为"全部节点突然断流"；内核侧校时消除该故障面，不同步系统时间。
+
 ---
 
 # DNS Fallback
 
-ClashParty.js 使用并行查询：
-
-```yaml
-fallback-lazy-query: false
-```
-
-主 DNS 与备用 DNS 同时查询，结果仍由 `fallback-filter` 决定。主 DNS 结果符合要求时即可返回；需要备用结果时可减少串行等待。未命中缓存时，备用 DNS 查询量会增加。
-
-FlClash.js 保持延迟查询设置：
+ClashParty.js 使用延迟查询：
 
 ```yaml
 fallback-lazy-query: true
 ```
 
-它先检查主 DNS 结果，满足 Fallback 条件时才查询备用 DNS，境外查询量较少。
+先检查主 DNS 结果，满足 Fallback 条件时才查询备用 DNS，境外查询量较少。
 
 参数语义见 [Mihomo DNS 文档](https://wiki.metacubex.one/config/dns/#fallback-lazy-query)。
 
@@ -379,6 +415,9 @@ NTP
 STUN
 Apple 部分服务
 Microsoft 网络检测
+微信 / QQ
+远程工具（ToDesk / TeamViewer / AnyDesk / RustDesk / 向日葵）
+Mesh VPN（Tailscale / ZeroTier）
 部分国内影音服务
 部分 IoT 服务
 ```
@@ -445,9 +484,10 @@ tcp-concurrent: true
 
 ```yaml
 unified-delay: true
+etag-support: true
 ```
 
-统一节点延迟计算方式。
+`etag-support` 使规则集每日检查在未变更时仅回 304，更新流量开销近乎为零（v5.0 起显式声明）。
 
 ---
 
@@ -477,10 +517,10 @@ HuggingFace
 默认候选：
 
 ```text
-自动选择
 美国节点
 新加坡节点
 日本节点
+节点选择
 手动选择
 ```
 
@@ -528,10 +568,12 @@ Web3 服务
 默认候选：
 
 ```text
-自动选择
+香港节点
+美国节点
 台湾节点
 日本节点
 新加坡节点
+节点选择
 手动选择
 ```
 
@@ -549,14 +591,14 @@ YouTube
 Disney+
 Prime Video
 HBO
-TikTok
 Spotify
+TikTok
 ```
 
-默认可在：
+TikTok 独立成组（美国 / 日本 / 新加坡），其余默认可在：
 
 ```text
-自动选择
+节点选择
 香港
 美国
 台湾
@@ -702,6 +744,8 @@ DIRECT
 Final
 ```
 
+游戏平台国内域名（`category-games@cn`、`category-game-platforms-download@cn`）在此前已显式直连，Steam 下载 CDN 走独立直连清单。
+
 ---
 
 # 微信头像与腾讯系直连
@@ -717,11 +761,13 @@ wechatpay.cn  微信支付
 
 这些域名属于 `geosite-tencent`。如果缺少显式直连规则，它们会命中 `MATCH,Final` 走代理，而腾讯 CDN 对境外出口 IP 经常拒绝或长时间挂起，典型表现为微信群聊头像无法显示。
 
-两个脚本均已在中国大陆规则之前加入：
+脚本已在中国大陆规则之前加入：
 
 ```yaml
 RULE-SET,geosite-tencent,DIRECT
 ```
+
+v5.0 起同时将 `rule-set:geosite-tencent` 加入 DNS `nameserver-policy` 走国内 DoH，解析更快更稳。
 
 无需修改 `fake-ip-filter`，域名直连时 Mihomo 会在建连阶段完成真实解析。
 
@@ -918,7 +964,7 @@ format: mrs
 interval: 86400
 ```
 
-即每天检查一次规则更新。
+即每天检查一次规则更新，配合 `etag-support` 未变更时零流量。
 
 ---
 
@@ -939,6 +985,12 @@ FlClash：
 图标：
 
 [lige47/lige_icon](https://github.com/lige47/lige_icon)
+
+社区实践参考：
+
+[powerfullz/override-rules](https://github.com/powerfullz/override-rules)（JS 覆写与客户端接管项提示）
+
+[DustinWin/ruleset_geodata](https://github.com/DustinWin/ruleset_geodata)（games-cn 游戏直连思路）
 
 ---
 

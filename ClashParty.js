@@ -1,6 +1,32 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v4.5（2026-10-03）
+ * Clash Party / Mihomo Party 个人覆写 v5.0（2026-10-07）
+ *
+ * v5.0：全面提速与抗断流增强（对标 powerfullz/override-rules、
+ *   DustinWin/ruleset_geodata，全部配置项经 Mihomo 官方 Wiki 复核），
+ *   全部为增量，不改动既有业务规则：
+ *   1. 新增「其他节点」动态分组：名称未被地区规则识别的节点自动归入
+ *      url-test 组，不再只能沉在「手动选择」里翻；
+ *      节点选择 / 手动选择 / Final 自动纳入（无未识别节点时自动隐藏）；
+ *   2. DNS 新增 direct-nameserver（纯 IP 加密 DoH，阿里 + 腾讯）：
+ *      DIRECT 出口域名（Steam 下载 CDN / 腾讯 / 苹果 CN / 游戏平台 CN
+ *      等本机必须真实解析的直连域名）固定走国内递归，首连更快；
+ *      同时封住一个反直觉路径——steamcontent.com 这类域名在
+ *      geolocation-!cn 里，若无 direct-nameserver 会被 policy
+ *      送去境外 DoH 绕代理解析一圈再直连（follow-policy 显式 false）；
+ *   3. nameserver-policy 补 rule-set:geosite-tencent → 国内 DoH：
+ *      qlogo.cn / qpic.cn / gtimg.cn 等微信域名不全在 geosite-cn，
+ *      显式指定后微信图片 / 头像解析更快更稳；
+ *   4. 新增 NTP 服务（ntp.aliyun.com，直连）：系统时间漂移时
+ *      hysteria2 / tuic 等基于时间的鉴权不再"莫名全断"；
+ *   5. 游戏平台国内域名直连（category-games@cn +
+ *      category-game-platforms-download@cn，对齐 DustinWin games-cn
+ *      思路，均带 @cn 属性，仅收国内可达域名，不影响外服分流）；
+ *   6. 显式声明 etag-support: true（内核默认已为 true，显式化防回退）
+ *      与 keep-alive 15/15（1.19.x 起内核默认值一致，显式保留）；
+ *   7. 客户端配合项（powerfullz 实践同款提示）：Clash Party 设置中
+ *      关闭「控制 DNS 设置」「控制域名嗅探」，接管配置保持 ipv6: false，
+ *      否则客户端接管项优先于本脚本，DNS / 嗅探优化不生效。
  *
  * v4.5：吸收社区优秀实践（对标 xinw597 / YangYuS8 / Smart-Config-Kit /
  *   adsryen：其 DNS 分层架构与 v4.3 已同构，仅并差异项），全部为增量，
@@ -434,6 +460,9 @@ function main(config) {
    * 五、Final 候选
    * ============================================================ */
 
+  /*
+   * v5.0：补充「其他节点」候选（无未识别节点时自动隐藏）。
+   */
   const FINAL_LISTS = [
     REF,
     '香港节点',
@@ -441,6 +470,7 @@ function main(config) {
     '日本节点',
     '新加坡节点',
     '美国节点',
+    '其他节点',
     'DIRECT'
   ]
 
@@ -559,6 +589,9 @@ function main(config) {
   /*
    * v4：新增 google@cn（dl.google.com / fonts / update 等大陆可达域名，
    * 同时覆盖 Egern Unbreak 中的 Google 项）与 douyin。
+   * v5.0：新增游戏平台国内域名（category-games@cn /
+   * category-game-platforms-download@cn，对齐 DustinWin games-cn 思路，
+   * 均为 @cn 属性子集，仅收国内可达域名，外服分流不受影响）。
    */
   const DIRECT_SETS = [
     'apple-cn',
@@ -566,7 +599,9 @@ function main(config) {
     'category-ai-cn',
     'microsoft@cn',
     'google@cn',
-    'douyin'
+    'douyin',
+    'category-games@cn',
+    'category-game-platforms-download@cn'
   ]
 
   /* ============================================================
@@ -639,6 +674,23 @@ function main(config) {
   const regionExists = (name) =>
     regionGroups.some((item) => item.name === name)
 
+  /*
+   * v5.0：未被任何地区规则识别的节点归入「其他节点」，
+   * 不再只能沉在手动选择里，保证机场改版 / 奇异命名时不丢分流。
+   */
+  const matched = new Set()
+  for (const pool of regionGroups) {
+    for (const nodeName of pool.nodes) {
+      matched.add(nodeName)
+    }
+  }
+
+  const otherNodes = proxyNames.filter(
+    (name) => !matched.has(name)
+  )
+
+  const hasOther = otherNodes.length > 0
+
   /* ============================================================
    * 十二、地区 url-test
    * ============================================================ */
@@ -660,6 +712,25 @@ function main(config) {
     ...urlTest
   }))
 
+  /*
+   * v5.0：「其他节点」url-test，显示在地区组之后。
+   */
+  const otherGroupDefs = hasOther
+    ? [
+        {
+          name: '其他节点',
+
+          icon: ICON + 'quanqiu-1.png',
+
+          type: 'url-test',
+
+          proxies: otherNodes,
+
+          ...urlTest
+        }
+      ]
+    : []
+
   /* ============================================================
    * 十三、生成策略组
    * ============================================================ */
@@ -680,7 +751,8 @@ function main(config) {
       '自动选择',
       '手动选择',
       'DIRECT',
-      ...regionGroups.map((item) => item.name)
+      ...regionGroups.map((item) => item.name),
+      ...(hasOther ? ['其他节点'] : [])
     ]
   })
 
@@ -700,7 +772,7 @@ function main(config) {
   })
 
   /*
-   * 手动选择：自动选择 + 地区组 + 全部真实节点 + 直连。
+   * 手动选择：自动选择 + 地区组 + 其他节点 + 全部真实节点 + 直连。
    */
   groups.push({
     name: '手动选择',
@@ -711,6 +783,7 @@ function main(config) {
     proxies: [
       '自动选择',
       ...regionGroups.map((item) => item.name),
+      ...(hasOther ? ['其他节点'] : []),
       ...proxyNames,
       'DIRECT'
     ]
@@ -771,16 +844,20 @@ function main(config) {
         return true
       }
 
+      if (item === '其他节点') {
+        return hasOther
+      }
+
       return regionExists(item)
     })
   })
 
   /*
    * 显示顺序：
-   * 节点选择 / 自动选择 / 手动选择 / 业务组 / Final / 地区组
+   * 节点选择 / 自动选择 / 手动选择 / 业务组 / Final / 地区组 / 其他节点
    */
   const orderedGroups =
-    groups.concat(regionGroupDefs)
+    groups.concat(regionGroupDefs, otherGroupDefs)
 
   /* ============================================================
    * 十五、Rule Provider
@@ -1274,11 +1351,24 @@ function main(config) {
       ],
 
       /*
+       * v5.0：腾讯系域名显式走国内 DoH。
+       * qlogo.cn / qpic.cn / gtimg.cn 等微信图片 / 头像域名
+       * 不全在 geosite-cn 内（规则走 geosite-tencent 直连），
+       * 解析同样显式指定国内递归，微信更快更稳；
+       * 位于 geolocation-!cn 之前，不会被误送往境外 DoH。
+       */
+      'rule-set:geosite-tencent': [
+        'https://dns.alidns.com/dns-query',
+        'https://doh.pub/dns-query'
+      ],
+
+      /*
        * v4.3：境外域名显式走境外加密 DoH（respect-rules 下
        * 自动经代理连接 1.1.1.1 / 8.8.8.8），国内递归 DNS
        * 不再收到任何已分类境外域名的查询，封堵本机解析泄露面。
-       * 顺序：geosite-cn 在前，双收录域名（apple / microsoft 等
-       * 有国内业务的）优先按国内解析，行为与 v4.2 保持一致。
+       * 顺序：geosite-cn / geosite-tencent 在前，双收录域名
+       * （apple / microsoft 等有国内业务的）优先按国内解析，
+       * 行为与 v4.2 保持一致。
        */
       ['rule-set:' + addRuleSet('geolocation-!cn')]: [
         'https://1.1.1.1/dns-query',
@@ -1356,6 +1446,20 @@ function main(config) {
       'https://120.53.53.53/dns-query',
       'tls://223.6.6.6'
     ],
+
+    /*
+     * v5.0：DIRECT 出口域名解析固定走国内加密 DoH（纯 IP，
+     * 无需引导）。Steam 下载 CDN / 腾讯 / 苹果 CN / 游戏平台 CN
+     * 等直连域名的本机解析不再绕行境外 DoH，首连更快；
+     * follow-policy 显式 false（与内核默认一致），直连解析
+     * 不受 nameserver-policy 影响，行为完全可预期。
+     */
+    'direct-nameserver': [
+      'https://223.5.5.5/dns-query',
+      'https://120.53.53.53/dns-query'
+    ],
+
+    'direct-nameserver-follow-policy': false,
 
     /*
      * 仅对局域网、联网检测、时间同步和部分游戏服务返回真实 IP。
@@ -1505,10 +1609,32 @@ function main(config) {
        * TCP keep-alive：
        * 长连接在 NAT 下更不容易被静默断开，
        * 降低微信 / TG / 下载任务"连着连着就断"的概率。
+       * v5.0：15/15 即 1.19.x 起内核默认值，显式保留防客户端回退。
        */
       'keep-alive-idle': 15,
 
       'keep-alive-interval': 15,
+
+      /*
+       * v5.0：外部资源（规则集 / 图标 / geodata）下载启用 ETag，
+       * 未变更时仅回 304，规则每日检查的流量开销近乎为零。
+       * 新内核默认 true，此处显式声明防客户端 / 旧核回退。
+       */
+      'etag-support': true,
+
+      /*
+       * v5.0：NTP 校时（ntp.aliyun.com，国内直连）。
+       * 内核时间与真实时间漂移过大时，hysteria2 / tuic 等基于
+       * 时间的鉴权会整体失败，表现为"全部节点突然断流"；
+       * 内核侧每 30 分钟校一次，消除该故障面。
+       * 不同步系统时间（write-to-system 保持默认关闭）。
+       */
+      ntp: {
+        enable: true,
+        server: 'ntp.aliyun.com',
+        port: 123,
+        interval: 30
+      },
 
       /*
        * 保留策略组选择与 Fake-IP 映射。
@@ -1531,4 +1657,3 @@ function main(config) {
     }
   )
 }
-
