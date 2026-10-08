@@ -182,6 +182,13 @@ proxy-providers
 
 因此机场增加或删除节点后，Mihomo 可以自动将节点纳入对应策略组。
 
+v5.0 起与 ClashParty.js 同步全部优化（其他节点分组 / direct-nameserver / 腾讯系 DNS / NTP / 游戏平台国内直连 / etag-support / testingcf 规则源 / tolerance 150），差异点：
+
+* 「其他节点」由 `include-all` + `exclude-filter` 排除全部地区正则实现，机场增删节点自动归组；
+* uTLS 指纹注入仅作用于内联 `proxies`；`proxy-providers` 内节点保持 provider 定义，脚本无法触达；
+* 仅使用 `proxy-providers` 时地区组假定全可用：空过滤组经 mihomo v1.19.32 实测以 `COMPATIBLE` 占位存在，配置正常加载、引用不悬空；
+* 两份脚本生成的配置均已通过 mihomo v1.19.32 `mihomo -t` 真内核校验。
+
 ---
 
 # 策略组
