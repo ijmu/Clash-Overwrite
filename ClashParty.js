@@ -1,6 +1,23 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v5.0（2026-10-07）
+ * Clash Party / Mihomo Party 个人覆写 v5.1（2026-10-11）
+ *
+ * v5.1：AI 分流升级与勘误（全部为增量，不改动既有业务规则）：
+ *   1. 接入 VPSDance/ai-proxy-rules 聚合规则集（每日自动同步，
+ *      合并 v2fly / blackmatrix7 等多源去重补漏，testingcf 同源加载）：
+ *      - ai-global（classical）→ AI服务：自动补齐 geosite 未收录的
+ *        海外 AI 域名（character.ai / civitai / leonardo.ai /
+ *        AWS Q / Adobe Firefly 等），不再依赖手工补域名；
+ *        置于业务大类之前，与 category-ai-!cn 同指 AI服务，
+ *        双收录域名（copilot.cloud.microsoft / storage.googleapis.com
+ *        等）归属不变；
+ *      - ai-cn（classical）→ DIRECT：国内 AI 补漏直连
+ *        （coze 全系 / chatglm / hailuoai 等）；
+ *   2. AI服务 组补「台湾节点」候选（Gemini / ChatGPT / Claude
+ *      均支持台湾出口，美西线路的延迟备选，无节点自动隐藏）；
+ *   3. 保留 v4.5 手工 AI 补充规则（runpod.io 不在聚合集内）；
+ *   4. 勘误：v4.4 注释称 quanqiu-1.png 不再被引用，实际自 v5.0
+ *      起「其他节点」组引用中，注释已更正。
  *
  * v5.0：全面提速与抗断流增强（对标 powerfullz/override-rules、
  *   DustinWin/ruleset_geodata，全部配置项经 Mihomo 官方 Wiki 复核），
@@ -56,7 +73,8 @@
  *   2. 图标源由 raw.githubusercontent.com 切换为
  *      testingcf.jsdelivr.net（Cloudflare 边缘，与规则集同源），
  *      根治 v4.1 起图标间歇缺失的网络层原因；
- *   3. quanqiu.png / quanqiu-1.png 保留于仓库不再被引用，可留可删。
+ *   3. quanqiu.png 无引用，可留可删（quanqiu-1.png 本条描述
+ *      已过时：自 v5.0 起「其他节点」组重新引用中，v5.1 勘误）。
  *
  * v4.3：DNS 防泄露加固（实测发现局部泄露面）：
  *   实测：o-o.myaddr.l.google.com TXT 回显 36.251.248.27（国内出口），
@@ -148,6 +166,19 @@ function main(config) {
    */
   const CRYPTO_DLER =
     'https://testingcf.jsdelivr.net/gh/dler-io/Rules@main/Clash/Provider/Crypto.yaml'
+
+  /*
+   * v5.1：VPSDance AI 聚合规则集（classical，仓库每日自动同步，
+   * 合并 v2fly / blackmatrix7 等多源去重补漏）。
+   * global：海外 AI 全集（character.ai / civitai / leonardo.ai /
+   * AWS Q / Adobe Firefly 等 geosite 未收录域名）；
+   * cn：国内 AI 全集（coze 全系 / chatglm.cn / hailuoai.com 等）。
+   */
+  const AI_GLOBAL =
+    'https://testingcf.jsdelivr.net/gh/VPSDance/ai-proxy-rules@main/rules/clash/global.yaml'
+
+  const AI_CN =
+    'https://testingcf.jsdelivr.net/gh/VPSDance/ai-proxy-rules@main/rules/clash/cn.yaml'
 
   /* ============================================================
    * 二、测速参数
@@ -317,10 +348,15 @@ function main(config) {
       name: 'AI服务',
       icon: 'chatgpt4.0.png',
       type: 'select',
+      /*
+       * v5.1：补台湾候选——Gemini / ChatGPT / Claude 均支持
+       * 台湾出口，美西线路的延迟备选；无台湾节点时自动隐藏。
+       */
       lists: [
         '美国节点',
         '新加坡节点',
         '日本节点',
+        '台湾节点',
         REF,
         '手动选择'
       ]
@@ -1167,6 +1203,26 @@ function main(config) {
     )
   }
 
+  /*
+   * v5.1：国内 AI 域名补漏直连（VPSDance cn，classical，每日同步）。
+   * coze 全系 / chatglm.cn / hailuoai.com 等未及时收录于
+   * category-ai-cn / geosite-cn 时，不再落入 Final 走代理。
+   * 与 DIRECT_SETS 同为直连目标，先后不影响结果。
+   */
+  providers['ai-cn'] = {
+    type: 'http',
+
+    behavior: 'classical',
+
+    format: 'yaml',
+
+    url: AI_CN,
+
+    interval: 86400
+  }
+
+  rules.push('RULE-SET,ai-cn,DIRECT')
+
   /* ============================================================
    * 二十一、广告拦截
    * ============================================================ */
@@ -1188,6 +1244,28 @@ function main(config) {
   /* ============================================================
    * 二十二、业务分流
    * ============================================================ */
+
+  /*
+   * v5.1：海外 AI 聚合补充（VPSDance ai-global，classical，
+   * 每日同步）。补齐 geosite 未收录的海外 AI 域名，自动更新，
+   * 不再依赖手工补域名。与 category-ai-!cn 同指 AI服务 组，
+   * 两者先后不影响结果；置于业务大类之前，保证 AI 域名
+   * （含 copilot.cloud.microsoft 等 GitHub / Microsoft 双收录项）
+   * 维持既有 AI服务 归属。
+   */
+  providers['ai-global'] = {
+    type: 'http',
+
+    behavior: 'classical',
+
+    format: 'yaml',
+
+    url: AI_GLOBAL,
+
+    interval: 86400
+  }
+
+  rules.push('RULE-SET,ai-global,AI服务')
 
   for (const [group, nameList] of CATEGORY_MAP) {
     for (const name of nameList) {

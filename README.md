@@ -22,7 +22,7 @@ Clash-Overwrite/
 * 自动节点测速与选择
 * 其他节点动态分组（未识别地区节点自动归组）
 * 香港、台湾、日本、新加坡、韩国、美国自动分组
-* AI 服务独立分流
+* AI 服务独立分流（category-ai-!cn + VPSDance 聚合规则每日补漏，v5.1 起）
 * 加密货币 / Web3 独立分流
 * 国内外流媒体分流
 * Apple / Google / Microsoft / GitHub 独立分流
@@ -182,7 +182,7 @@ proxy-providers
 
 因此机场增加或删除节点后，Mihomo 可以自动将节点纳入对应策略组。
 
-v5.0 起与 ClashParty.js 同步全部优化（其他节点分组 / direct-nameserver / 腾讯系 DNS / NTP / 游戏平台国内直连 / etag-support / testingcf 规则源 / tolerance 150），差异点：
+v5.0 起与 ClashParty.js 同步全部优化（其他节点分组 / direct-nameserver / 腾讯系 DNS / NTP / 游戏平台国内直连 / etag-support / testingcf 规则源 / tolerance 150；v5.1 起含 AI 聚合规则集 ai-global / ai-cn 与 AI服务 组台湾候选），差异点：
 
 * 「其他节点」由 `include-all` + `exclude-filter` 排除全部地区正则实现，机场增删节点自动归组；
 * uTLS 指纹注入仅作用于内联 `proxies`；`proxy-providers` 内节点保持 provider 定义，脚本无法触达；
@@ -500,13 +500,14 @@ etag-support: true
 
 # AI 服务
 
-境外 AI 使用：
+境外 AI 使用双规则集（v5.1 起）：
 
 ```text
-category-ai-!cn
+category-ai-!cn（MetaCubeX，MRS）
+ai-global（VPSDance/ai-proxy-rules，classical，每日同步）
 ```
 
-根据 MetaCubeX 上游规则自动覆盖相关 AI 服务，例如：
+`category-ai-!cn` 根据 MetaCubeX 上游规则自动覆盖相关 AI 服务，例如：
 
 ```text
 OpenAI
@@ -519,7 +520,22 @@ Poe
 HuggingFace
 ```
 
-实际覆盖范围以 MetaCubeX 当前规则为准。
+`ai-global` 为聚合补充规则集（合并 v2fly / blackmatrix7 等多源去重
+补漏，仓库每日自动同步），补齐 geosite 未收录的域名，例如：
+
+```text
+character.ai
+civitai.com
+leonardo.ai
+AWS Q Developer / CodeWhisperer
+Adobe Firefly
+```
+
+两个规则集同指 AI服务 组，先后不影响结果；AI 规则位于
+Google / GitHub / Microsoft 大类之前，双收录域名
+（copilot.cloud.microsoft、storage.googleapis.com 等）归属不变。
+
+实际覆盖范围以两个上游当前规则为准。
 
 默认候选：
 
@@ -527,11 +543,16 @@ HuggingFace
 美国节点
 新加坡节点
 日本节点
+台湾节点（v5.1 新增，无台湾节点时自动隐藏）
 节点选择
 手动选择
 ```
 
 对于 ChatGPT、Claude、Gemini 等账号型服务，更推荐长期使用稳定的固定出口，减少国家和 IP 频繁变化。
+
+v4.5 手工补充的开发者向 AI 平台规则保留
+（stability / replicate / together / suno / runpod，
+其中 runpod.io 不在聚合集内）。
 
 ---
 
@@ -540,7 +561,8 @@ HuggingFace
 使用：
 
 ```text
-category-ai-cn
+category-ai-cn（MetaCubeX，MRS）
+ai-cn（VPSDance/ai-proxy-rules，classical，每日同步，v5.1 新增）
 ```
 
 强制：
@@ -551,7 +573,10 @@ DIRECT
 
 主要用于中国大陆 AI 服务。
 
-具体覆盖范围由 MetaCubeX 上游规则维护。
+`ai-cn` 补漏直连未及时收录于上游的国内 AI 域名
+（coze 全系 / chatglm.cn / hailuoai.com 等）。
+
+具体覆盖范围由上游规则维护。
 
 ---
 
@@ -998,6 +1023,8 @@ FlClash：
 [powerfullz/override-rules](https://github.com/powerfullz/override-rules)（JS 覆写与客户端接管项提示）
 
 [DustinWin/ruleset_geodata](https://github.com/DustinWin/ruleset_geodata)（games-cn 游戏直连思路）
+
+[VPSDance/ai-proxy-rules](https://github.com/VPSDance/ai-proxy-rules)（AI 聚合规则集，每日同步补漏，v5.1 起接入）
 
 ---
 
