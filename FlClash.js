@@ -1,6 +1,14 @@
 /*
  * FlClash.js
- * FlClash / Mihomo 动态覆写 v5.4（2026-10-17）
+ * FlClash / Mihomo 动态覆写 v5.5（2026-10-17）
+ *
+ * v5.5：与 ClashParty.js v5.5 同步——开发者与社交分流补齐
+ *   （来源：CFW star 分组调研）：
+ *   1. 新增「开发者」组（szkane Developer.list，classical text）；
+ *   2. 新增「论坛」「社交媒体」组（QuixoticHeart forum.mrs /
+ *      socialmedia.mrs）；
+ *   3. GitHub 组并入 gits.mrs；AI服务 组并入 ai.mrs；
+ *   4. 远控软件进程直连（ToDesk / Sunlogin / mstsc / RustDesk）。
  *
  * v5.4：与 ClashParty.js v5.4 同步的分流补齐与规则化（全部经
  *   CDN 可用性逐一实测）：
@@ -135,6 +143,17 @@ function main(config) {
 
   const AI_CN =
     'https://testingcf.jsdelivr.net/gh/VPSDance/ai-proxy-rules@main/rules/clash/cn.yaml'
+
+  /*
+   * v5.5：QuixoticHeart/rule-set（ruleset 分支，每日构建，
+   * domain mrs）与 szkane/ClashRuleSet（classical text）。
+   * 与 ClashParty.js v5.5 同步。
+   */
+  const QX_DOMAIN =
+    'https://testingcf.jsdelivr.net/gh/QuixoticHeart/rule-set@ruleset/meta/domain/'
+
+  const DEV_LIST =
+    'https://testingcf.jsdelivr.net/gh/szkane/ClashRuleSet@main/Clash/Ruleset/Developer.list'
 
   /* ============================================================
    * 二、测速参数
@@ -496,6 +515,43 @@ function main(config) {
         '新加坡节点',
         '手动选择'
       ]
+    },
+
+    /*
+     * v5.5：开发者 / 论坛 / 社交媒体。与 ClashParty.js v5.5 同步。
+     */
+    {
+      name: '开发者',
+      icon: REPO_ICON + 'docker.png',
+      type: 'select',
+      lists: [
+        REF,
+        '手动选择',
+        'DIRECT'
+      ]
+    },
+
+    {
+      name: '论坛',
+      icon: REPO_ICON + 'forum.png',
+      type: 'select',
+      lists: [
+        REF,
+        '手动选择'
+      ]
+    },
+
+    {
+      name: '社交媒体',
+      icon: REPO_ICON + 'socialmedia.png',
+      type: 'select',
+      lists: [
+        REF,
+        '美国节点',
+        '新加坡节点',
+        '香港节点',
+        '手动选择'
+      ]
     }
   ]
 
@@ -570,12 +626,14 @@ function main(config) {
      * GitHub 必须位于 Microsoft 前面，
      * Microsoft 大类会覆盖部分 GitHub 域名。
      * v5.4：github-copilot 补齐（同指 GitHub 组）。
+     * v5.5：gits 补 GitHub 散装资产域名。
      */
     [
       'GitHub',
       [
         'github-copilot',
-        'github'
+        'github',
+        'gits'
       ]
     ],
 
@@ -589,6 +647,38 @@ function main(config) {
         'xbox',
         'microsoft',
         'bing'
+      ]
+    ],
+
+    /*
+     * v5.5：ai 补漏（双收录同指 AI服务）；开发者 / 论坛 /
+     * 社交媒体 新增。
+     */
+    [
+      'AI服务',
+      [
+        'ai'
+      ]
+    ],
+
+    [
+      '开发者',
+      [
+        'developer'
+      ]
+    ],
+
+    [
+      '论坛',
+      [
+        'forum'
+      ]
+    ],
+
+    [
+      '社交媒体',
+      [
+        'socialmedia'
       ]
     ],
 
@@ -969,7 +1059,18 @@ function main(config) {
     'PROCESS-NAME,uTorrent.exe,DIRECT',
     'PROCESS-NAME,transmission-qt.exe,DIRECT',
     'PROCESS-NAME,aria2c.exe,DIRECT',
-    'PROCESS-NAME,Thunder.exe,DIRECT'
+    'PROCESS-NAME,Thunder.exe,DIRECT',
+    /*
+     * v5.5：远控软件进程直连（szkane RemoteDesktop.list）。
+     * 与 ClashParty.js v5.5 同步。
+     */
+    'PROCESS-NAME,ToDesk.exe,DIRECT',
+    'PROCESS-NAME,ToDesk_Service.exe,DIRECT',
+    'PROCESS-NAME,ToDesk_Session.exe,DIRECT',
+    'PROCESS-NAME,SunloginClient.exe,DIRECT',
+    'PROCESS-NAME,mstsc.exe,DIRECT',
+    'PROCESS-NAME,RustDesk.exe,DIRECT',
+    'PROCESS-NAME,rustdesk.exe,DIRECT'
   )
 
   rules.push(
@@ -1259,6 +1360,71 @@ function main(config) {
 
   rules.push('RULE-SET,ai-global,AI服务')
 
+  /*
+   * v5.5：QuixoticHeart 四个 domain mrs（ai / gits / forum /
+   * socialmedia）与 szkane Developer classical text。
+   * 与 ClashParty.js v5.5 同步。
+   */
+  providers['qx-ai'] = {
+    type: 'http',
+
+    behavior: 'domain',
+
+    format: 'mrs',
+
+    url: QX_DOMAIN + 'ai.mrs',
+
+    interval: 86400
+  }
+
+  providers['qx-gits'] = {
+    type: 'http',
+
+    behavior: 'domain',
+
+    format: 'mrs',
+
+    url: QX_DOMAIN + 'gits.mrs',
+
+    interval: 86400
+  }
+
+  providers['qx-forum'] = {
+    type: 'http',
+
+    behavior: 'domain',
+
+    format: 'mrs',
+
+    url: QX_DOMAIN + 'forum.mrs',
+
+    interval: 86400
+  }
+
+  providers['qx-socialmedia'] = {
+    type: 'http',
+
+    behavior: 'domain',
+
+    format: 'mrs',
+
+    url: QX_DOMAIN + 'socialmedia.mrs',
+
+    interval: 86400
+  }
+
+  providers['developer'] = {
+    type: 'http',
+
+    behavior: 'classical',
+
+    format: 'text',
+
+    url: DEV_LIST,
+
+    interval: 86400
+  }
+
   for (const [group, nameList] of CATEGORY_MAP) {
     for (const name of nameList) {
       rules.push(
@@ -1269,6 +1435,14 @@ function main(config) {
       )
     }
   }
+
+  rules.push(
+    'RULE-SET,qx-ai,AI服务',
+    'RULE-SET,qx-gits,GitHub',
+    'RULE-SET,developer,开发者',
+    'RULE-SET,qx-forum,论坛',
+    'RULE-SET,qx-socialmedia,社交媒体'
+  )
 
   rules.push(
     'DOMAIN-SUFFIX,stability.ai,AI服务',

@@ -1,6 +1,27 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v5.4（2026-10-17）
+ * Clash Party / Mihomo Party 个人覆写 v5.5（2026-10-17）
+ *
+ * v5.5：开发者与社交分流补齐（来源：CFW star 分组调研）：
+ *   1. 新增「开发者」组：szkane/ClashRuleSet Developer.list
+ *      （classical text，docker/ghcr/gitlab/maven/pythonhosted
+ *      等，含 GitHub 家族域名；DOMAIN-KEYWORD,registry 一条
+ *      按其原样保留——置于精确规则之后误伤面可控，github
+ *      家族先命中不受影响）→ 独立组管理；
+ *   2. 新增「论坛」组：QuixoticHeart forum.mrs（4chan/2ch/
+ *      quora 等）；
+ *   3. 新增「社交媒体」组：QuixoticHeart socialmedia.mrs
+ *      （Instagram/Facebook/WhatsApp/Threads 等）；
+ *   4. GitHub 组并入 QuixoticHeart gits.mrs（S3 资产 /
+ *      Copilot 附件等散装域名，geosite-github 不含）；
+ *   5. AI服务 组并入 QuixoticHeart ai.mrs（补漏，置于
+ *      VPSDance ai-global 之前，双收录同指 AI服务 无影响）；
+ *   6. 远控直连补强：szkane RemoteDesktop.list 的
+ *      PROCESS-NAME 条目（ToDesk / Sunlogin / mstsc /
+ *      OrbStack 等）并入 BT/P2P 直连区，防误走代理；
+ *   7. 新组图标 3 枚入库 icons/（lige47 图标库）。
+ *   评估后未采纳：Loyalsoldier 大合集（与 MetaCubeX 体系
+ *   高度重叠，纯增规则加载量）。
  *
  * v5.4：分流补齐与规则化（全部经 CDN 可用性逐一实测）：
  *   1. Microsoft 组补 onedrive / xbox / github-copilot 独立
@@ -223,6 +244,24 @@ function main(config) {
 
   const AI_CN =
     'https://testingcf.jsdelivr.net/gh/VPSDance/ai-proxy-rules@main/rules/clash/cn.yaml'
+
+  /*
+   * v5.5：QuixoticHeart/rule-set（ruleset 分支，每日 7:30 自动
+   * 构建，mihomo domain mrs 格式，与本配置同构）。
+   * forum：论坛社区；socialmedia：海外社交全家桶；
+   * gits：GitHub 散装资产域名；ai：海外 AI 补漏。
+   */
+  const QX_DOMAIN =
+    'https://testingcf.jsdelivr.net/gh/QuixoticHeart/rule-set@ruleset/meta/domain/'
+
+  /*
+   * v5.5：szkane/ClashRuleSet（Surge classical text 格式，
+   * Mihomo 以 classical+text 直接兼容）。
+   * developer：开发者常用境外站（含 GitHub 家族）；
+   * remote-desktop：远控软件进程名直连清单。
+   */
+  const DEV_LIST =
+    'https://testingcf.jsdelivr.net/gh/szkane/ClashRuleSet@main/Clash/Ruleset/Developer.list'
 
   /* ============================================================
    * 二、测速参数
@@ -599,6 +638,43 @@ function main(config) {
         '新加坡节点',
         '手动选择'
       ]
+    },
+
+    /*
+     * v5.5：开发者 / 论坛 / 社交媒体——CFW star 分组调研成果。
+     */
+    {
+      name: '开发者',
+      icon: 'docker.png',
+      type: 'select',
+      lists: [
+        REF,
+        '手动选择',
+        'DIRECT'
+      ]
+    },
+
+    {
+      name: '论坛',
+      icon: 'forum.png',
+      type: 'select',
+      lists: [
+        REF,
+        '手动选择'
+      ]
+    },
+
+    {
+      name: '社交媒体',
+      icon: 'socialmedia.png',
+      type: 'select',
+      lists: [
+        REF,
+        '美国节点',
+        '新加坡节点',
+        '香港节点',
+        '手动选择'
+      ]
     }
   ]
 
@@ -691,12 +767,14 @@ function main(config) {
      * Microsoft 大类会覆盖部分 GitHub 域名。
      * v5.4：github-copilot 补齐（置于 github 前后均指 GitHub 组，
      * 此处与 github 同指，Copilot 域名先命中亦走 GitHub 组）。
+     * v5.5：gits 补 GitHub 散装资产域名（QuixoticHeart）。
      */
     [
       'GitHub',
       [
         'github-copilot',
-        'github'
+        'github',
+        'gits'
       ]
     ],
 
@@ -711,6 +789,38 @@ function main(config) {
         'xbox',
         'microsoft',
         'bing'
+      ]
+    ],
+
+    /*
+     * v5.5：ai 补漏（QuixoticHeart，双收录同指 AI服务）；
+     * 开发者（szkane classical）/ 论坛 / 社交媒体 新增。
+     */
+    [
+      'AI服务',
+      [
+        'ai'
+      ]
+    ],
+
+    [
+      '开发者',
+      [
+        'developer'
+      ]
+    ],
+
+    [
+      '论坛',
+      [
+        'forum'
+      ]
+    ],
+
+    [
+      '社交媒体',
+      [
+        'socialmedia'
       ]
     ],
 
@@ -1159,7 +1269,19 @@ function main(config) {
     'PROCESS-NAME,uTorrent.exe,DIRECT',
     'PROCESS-NAME,transmission-qt.exe,DIRECT',
     'PROCESS-NAME,aria2c.exe,DIRECT',
-    'PROCESS-NAME,Thunder.exe,DIRECT'
+    'PROCESS-NAME,Thunder.exe,DIRECT',
+    /*
+     * v5.5：远控软件进程直连（szkane RemoteDesktop.list）。
+     * 域名级 fake-ip-filter / sniffer 豁免 v4.5 已有，
+     * 此处补进程级兜底（RustDesk 等自更新 / 中继进程名各异）。
+     */
+    'PROCESS-NAME,ToDesk.exe,DIRECT',
+    'PROCESS-NAME,ToDesk_Service.exe,DIRECT',
+    'PROCESS-NAME,ToDesk_Session.exe,DIRECT',
+    'PROCESS-NAME,SunloginClient.exe,DIRECT',
+    'PROCESS-NAME,mstsc.exe,DIRECT',
+    'PROCESS-NAME,RustDesk.exe,DIRECT',
+    'PROCESS-NAME,rustdesk.exe,DIRECT'
   )
 
   rules.push(
@@ -1485,6 +1607,51 @@ function main(config) {
 
   rules.push('RULE-SET,ai-global,AI服务')
 
+  /*
+   * v5.5：QuixoticHeart 四个 domain mrs 规则集。
+   * ai 先于 ai-global 命中（双收录同指 AI服务，顺序无影响），
+   * gits 与 GitHub 组既有规则同指，forum / socialmedia 指新组。
+   */
+  const addQxDomain = (name) => {
+    const key = 'qx-' + name
+
+    providers[key] = {
+      type: 'http',
+
+      behavior: 'domain',
+
+      format: 'mrs',
+
+      url: QX_DOMAIN + name + '.mrs',
+
+      interval: 86400
+    }
+
+    return key
+  }
+
+  rules.push('RULE-SET,' + addQxDomain('ai') + ',AI服务')
+
+  /*
+   * gits 置于 CATEGORY_MAP 之外：GitHub 组的 geosite 规则
+   * 在循环里生成，gits 需在循环结束后并入该组规则序列。
+   */
+  providers['qx-gits'] = {
+    type: 'http',
+
+    behavior: 'domain',
+
+    format: 'mrs',
+
+    url: QX_DOMAIN + 'gits.mrs',
+
+    interval: 86400
+  }
+
+  addQxDomain('forum')
+
+  addQxDomain('socialmedia')
+
   for (const [group, nameList] of CATEGORY_MAP) {
     for (const name of nameList) {
       rules.push(
@@ -1495,6 +1662,36 @@ function main(config) {
       )
     }
   }
+
+  /*
+   * v5.5：gits 并入 GitHub 组（QuixoticHeart domain mrs）。
+   * 与 geosite-github 同指 GitHub 组，先后无影响；
+   * 必须位于 Microsoft 大类之前，维持 GitHub 优先级。
+   */
+  rules.push('RULE-SET,qx-gits,GitHub')
+
+  /*
+   * v5.5：开发者 / 论坛 / 社交媒体规则。
+   * developer 为 Surge classical text（szkane，Mihomo 直接
+   * 兼容）；forum / socialmedia 为 QuixoticHeart domain mrs。
+   */
+  providers['developer'] = {
+    type: 'http',
+
+    behavior: 'classical',
+
+    format: 'text',
+
+    url: DEV_LIST,
+
+    interval: 86400
+  }
+
+  rules.push(
+    'RULE-SET,developer,开发者',
+    'RULE-SET,qx-forum,论坛',
+    'RULE-SET,qx-socialmedia,社交媒体'
+  )
 
   /*
    * v4.5：AI服务 补充域名（xinw597 实践）。

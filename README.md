@@ -28,6 +28,9 @@ Clash-Overwrite/
 * Apple / Google / Microsoft / GitHub 独立分流
 * Discord / X(Twitter) / Reddit / Wikipedia / Steam 独立分流（v5.4）
 * Microsoft 系细分规则（OneDrive / Xbox / Copilot 规则集，v5.4）
+* 开发者 / 论坛 / 社交媒体独立分流（v5.5，CFW star 分组调研成果）
+* GitHub 散装资产域名补漏（gits）与 AI 补漏规则集（v5.5）
+* 远控软件进程直连补强（ToDesk / 向日葵 / mstsc / RustDesk，v5.5）
 * 中国大陆流量直连
 * 游戏平台国内域名直连（category-games@cn）
 * 腾讯系域名直连（修复微信群头像 / 聊天图片加载）
@@ -215,6 +218,9 @@ v5.0 起与 ClashParty.js 同步全部优化（其他节点分组 / direct-names
 | Reddit    | select   | Reddit（v5.4 新增）                      |
 | Wikipedia | select   | Wikipedia / 姊妹项目（v5.4 新增）         |
 | Steam     | select   | Steam 商店 / 社区（v5.4 新增，国服与下载 CDN 直连） |
+| 开发者    | select   | Docker / GitLab / Maven / PyPI 等开发者境外站（v5.5） |
+| 论坛      | select   | 4chan / 2ch / Quora 等论坛社区（v5.5）    |
+| 社交媒体  | select   | Instagram / Facebook / WhatsApp / Threads（v5.5） |
 | Final     | select   | 未匹配流量最终出口                               |
 
 地区组：
