@@ -1,6 +1,17 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v5.5（2026-10-17）
+ * Clash Party / Mihomo Party 个人覆写 v5.6（2026-10-17）
+ *
+ * v5.6：媒体分组精简（去重复）：
+ *   1. 砍「国外媒体」组：Netflix / Disney / HBO / PrimeVideo /
+ *      Spotify 规则集移除（不再加载，走 Final 兜底）；
+ *   2. YouTube 无需独立组：geosite-google 已 include:youtube
+ *      （v2fly 上游实测），移除 youtube 规则集后 YouTube 域名
+ *      自然由 geosite-google 命中走 Google 组；
+ *   3. TikTok / Telegram / X(Twitter) 独立组保留（必需项）；
+ *   4. 「国内媒体」组保留，DIRECT 优先（原样：B 站等默认直连，
+ *      需要港澳台内容时手动切节点选择）；
+ *   5. play.png 图标保留于仓库（不再引用，可留可删）。
  *
  * v5.5：开发者与社交分流补齐（来源：CFW star 分组调研）：
  *   1. 新增「开发者」组：szkane/ClashRuleSet Developer.list
@@ -476,20 +487,11 @@ function main(config) {
       ]
     },
 
-    {
-      name: '国外媒体',
-      icon: 'play.png',
-      type: 'select',
-      lists: [
-        REF,
-        '香港节点',
-        '美国节点',
-        '台湾节点',
-        '日本节点',
-        '新加坡节点',
-        '手动选择'
-      ]
-    },
+    /*
+     * v5.6：「国外媒体」组已砍——Netflix / Disney / HBO /
+     * PrimeVideo / Spotify 走 Final 兜底，YouTube 由
+     * geosite-google 命中走 Google 组。TikTok 独立组保留。
+     */
 
     {
       name: 'TikTok',
@@ -510,6 +512,10 @@ function main(config) {
 
     {
       name: '国内媒体',
+      /*
+       * v5.6：保留，DIRECT 优先——B 站等默认直连；
+       * 需要港澳台内容时手动切 节点选择。
+       */
       icon: 'bilibili.png',
       type: 'select',
       lists: [
@@ -743,17 +749,11 @@ function main(config) {
       ]
     ],
 
-    [
-      '国外媒体',
-      [
-        'netflix',
-        'youtube',
-        'disney',
-        'primevideo',
-        'hbo',
-        'spotify'
-      ]
-    ],
+    /*
+     * v5.6：「国外媒体」段已砍——netflix / disney / primevideo /
+     * hbo / spotify 不再加载（走 Final 兜底）；youtube 由
+     * geosite-google include（下方 Google 段）命中走 Google 组。
+     */
 
     [
       'Google',

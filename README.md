@@ -24,7 +24,8 @@ Clash-Overwrite/
 * 香港、台湾、日本、新加坡、韩国、美国自动分组
 * AI 服务独立分流（category-ai-!cn + VPSDance 聚合规则每日补漏，v5.1 起）
 * 加密货币 / Web3 独立分流
-* 国内外流媒体分流
+* 国外媒体已精简（v5.6）：YouTube 走 Google 组，Netflix/Disney/HBO/Spotify 走 Final 兜底
+* TikTok / Telegram / X(Twitter) 独立分流
 * Apple / Google / Microsoft / GitHub 独立分流
 * Discord / X(Twitter) / Reddit / Wikipedia / Steam 独立分流（v5.4）
 * Microsoft 系细分规则（OneDrive / Xbox / Copilot 规则集，v5.4）
@@ -207,8 +208,10 @@ v5.0 起与 ClashParty.js 同步全部优化（其他节点分组 / direct-names
 | 其他节点      | url-test | 未被地区规则识别节点的自动测速组（v5.0 起，无成员时隐藏）         |
 | AI服务      | select   | ChatGPT、Claude、Gemini、Grok、Perplexity 等 |
 | 加密货币      | select   | Crypto、交易所、Web3 服务                      |
-| 国外媒体      | select   | YouTube、Netflix、Disney+、HBO、Spotify 等   |
-| 国内媒体      | select   | Bilibili、爱奇艺、优酷                         |
+| TikTok    | select   | TikTok（地区敏感，独立控制）            |
+| Telegram  | select   | Telegram                                |
+| X(Twitter) | select  | X / Twitter（v5.4 新增）                 |
+| 国内媒体  | select   | Bilibili、爱奇艺、优酷（DIRECT 优先）    |
 | Apple     | select   | Apple / iCloud                          |
 | Google    | select   | Google 服务                               |
 | Microsoft | select   | Microsoft / Bing                        |

@@ -1,6 +1,13 @@
 /*
  * FlClash.js
- * FlClash / Mihomo 动态覆写 v5.5（2026-10-17）
+ * FlClash / Mihomo 动态覆写 v5.6（2026-10-17）
+ *
+ * v5.6：与 ClashParty.js v5.6 同步——媒体分组精简：
+ *   1. 砍「国外媒体」组：netflix / disney / primevideo / hbo /
+ *      spotify 规则集移除（走 Final 兜底）；
+ *   2. YouTube 由 geosite-google include 命中走 Google 组；
+ *   3. TikTok / Telegram / X(Twitter) 保留；
+ *   4. 「国内媒体」保留，DIRECT 优先。
  *
  * v5.5：与 ClashParty.js v5.5 同步——开发者与社交分流补齐
  *   （来源：CFW star 分组调研）：
@@ -360,20 +367,11 @@ function main(config) {
       ]
     },
 
-    {
-      name: '国外媒体',
-      icon: REPO_ICON + 'play.png',
-      type: 'select',
-      lists: [
-        REF,
-        '香港节点',
-        '美国节点',
-        '台湾节点',
-        '日本节点',
-        '新加坡节点',
-        '手动选择'
-      ]
-    },
+    /*
+     * v5.6：「国外媒体」组已砍——Netflix / Disney / HBO /
+     * PrimeVideo / Spotify 走 Final 兜底，YouTube 由
+     * geosite-google 命中走 Google 组。与 ClashParty.js 同步。
+     */
 
     {
       name: 'TikTok',
@@ -390,6 +388,10 @@ function main(config) {
 
     {
       name: '国内媒体',
+      /*
+       * v5.6：保留，DIRECT 优先——B 站等默认直连；
+       * 需要港澳台内容时手动切 节点选择。
+       */
       icon: REPO_ICON + 'bilibili.png',
       type: 'select',
       lists: [
@@ -603,17 +605,12 @@ function main(config) {
       ]
     ],
 
-    [
-      '国外媒体',
-      [
-        'netflix',
-        'youtube',
-        'disney',
-        'primevideo',
-        'hbo',
-        'spotify'
-      ]
-    ],
+    /*
+     * v5.6：「国外媒体」段已砍——netflix / disney / primevideo /
+     * hbo / spotify 不再加载（走 Final 兜底）；youtube 由
+     * geosite-google include 命中走 Google 组。
+     * 与 ClashParty.js v5.6 同步。
+     */
 
     [
       'Google',
