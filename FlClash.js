@@ -1,6 +1,16 @@
 /*
  * FlClash.js
- * FlClash / Mihomo 动态覆写 v5.1（2026-10-11）
+ * FlClash / Mihomo 动态覆写 v5.2（2026-10-17）
+ *
+ * v5.2：与 ClashParty.js v5.2 同步的运行日志实测优化（全部为增量）：
+ *   1. NCSI 直连（msftconnecttest.com / msftncsi.com）：不在
+ *      microsoft@cn 内，此前命中 geosite-microsoft 走代理，
+ *      节点故障时 Windows 误报"无 Internet"（日志实测 20 次失败）；
+ *   2. lencr.org（Let's Encrypt OCSP / CRL）直连：证书校验
+ *      不依赖代理，代理断连时 LE 证书站点首连不受影响；
+ *   3. binance.bh 显式归入加密货币组：不在
+ *      category-cryptocurrency 上游集内，此前落 Final 兜底；
+ *   4. ota.nvidia.com（GeForce 驱动 OTA）直连，NVIDIA 国内可达。
  *
  * v5.1：与 ClashParty.js v5.1 同步的 AI 分流升级（全部为增量，
  *   不改动既有业务规则）：
@@ -818,6 +828,29 @@ function main(config) {
   /* ============================================================
    * 十二、个人业务精确规则
    * ============================================================ */
+
+  /*
+   * v5.2：系统与证书基础设施直连（运行日志实测优化）。
+   * - NCSI（msftconnecttest / msftncsi）不在 microsoft@cn 内，
+   *   此前命中 geosite-microsoft 走代理，节点故障时 Windows
+   *   误报"无 Internet"，固定直连；
+   * - lencr.org 为 Let's Encrypt OCSP / CRL，证书校验不依赖
+   *   代理，直连避免代理断连时 LE 证书站点首连变慢；
+   * - ota.nvidia.com 为 GeForce 驱动 OTA，国内可达。
+   * 与 ClashParty.js v5.2 同步。
+   */
+  rules.push(
+    'DOMAIN-SUFFIX,msftconnecttest.com,DIRECT',
+    'DOMAIN-SUFFIX,msftncsi.com,DIRECT',
+    'DOMAIN-SUFFIX,lencr.org,DIRECT',
+    'DOMAIN,ota.nvidia.com,DIRECT'
+  )
+
+  /*
+   * v5.2：binance.bh 不在 category-cryptocurrency 上游集内，
+   * 此前落 Final 兜底，显式归入加密货币组。
+   */
+  rules.push('DOMAIN-SUFFIX,binance.bh,加密货币')
 
   rules.push(
     'DOMAIN-SUFFIX,rilipro.com,DIRECT',

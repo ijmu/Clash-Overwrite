@@ -90,6 +90,7 @@ Clash Party 设置
 → 关闭「控制域名嗅探」
 接管配置
 → ipv6: false
+→ 开启「TCP 并发」（v5.2 起必开：接管默认 false 会覆盖脚本写入的 true）
 ```
 
 （实践同款提示来自 powerfullz/override-rules：客户端接管 DNS / SNI 时，覆写脚本的 DNS 分层架构会被架空，表现为 DNS 泄露与解析变慢。）
