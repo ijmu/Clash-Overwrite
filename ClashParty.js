@@ -1,6 +1,18 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v5.2（2026-10-17）
+ * Clash Party / Mihomo Party 个人覆写 v5.3（2026-10-17）
+ *
+ * v5.3：分组切换稳定性专项（结构不变、业务组全保留）：
+ *   1. 新增「故障转移」组（fallback 类型，全部真实节点，
+ *      订阅顺序 = 切换优先级）：当前节点失效时自动切到第一个
+ *      存活节点，延迟抖动不切换——长连接几乎不断流。
+ *      纳入 节点选择 / 手动选择 / Final 候选；图标复用仓库
+ *      闲置的 quanqiu.png，零新增资源。日常仍推荐自动选择
+ *      （延迟最优）；节点不稳期 / 大流量下载时切故障转移。
+ *   2. 故障响应提速：测速间隔 300 → 180 秒（死节点复测
+ *      最长等待 5 分钟 → 3 分钟）；max-failed-times 2 → 1
+ *      （一次失败立即触发健康检查）。tolerance 150 保持，
+ *      延迟抖动保护不变。对自动选择与全部地区组同时生效。
  *
  * v5.2：运行日志实测优化（全部为增量，不改动既有业务规则）：
  *   1. NCSI 直连（msftconnecttest.com / msftncsi.com）：不在
@@ -200,14 +212,14 @@ function main(config) {
     url: 'https://www.gstatic.com/generate_204',
     'expected-status': 204,
 
-    // 5 分钟测速一次
-    interval: 300,
+    // 3 分钟测速一次（v5.3：300 → 180，死节点复测等待缩短）
+    interval: 180,
 
     // 单节点测速最多等待 3 秒
     timeout: 3000,
 
-    // 两次失败才触发强制重测
-    'max-failed-times': 2,
+    // 一次失败立即触发强制重测（v5.3：2 → 1，加快故障响应）
+    'max-failed-times': 1,
 
     // 健康节点间的切换容差；当前节点测速不存活时另行切换。
     // v4.2：80 → 150，节点延迟抖动时不轻易切换，
@@ -510,9 +522,11 @@ function main(config) {
 
   /*
    * v5.0：补充「其他节点」候选（无未识别节点时自动隐藏）。
+   * v5.3：补充「故障转移」候选。
    */
   const FINAL_LISTS = [
     REF,
+    '故障转移',
     '香港节点',
     '台湾节点',
     '日本节点',
@@ -797,6 +811,7 @@ function main(config) {
 
     proxies: [
       '自动选择',
+      '故障转移',
       '手动选择',
       'DIRECT',
       ...regionGroups.map((item) => item.name),
@@ -820,7 +835,35 @@ function main(config) {
   })
 
   /*
-   * 手动选择：自动选择 + 地区组 + 其他节点 + 全部真实节点 + 直连。
+   * v5.3：故障转移（fallback）。当前节点失效时按订阅顺序
+   * 切到第一个存活节点，延迟抖动不切换，长连接几乎不断流；
+   * 日常仍推荐自动选择（延迟最优），节点不稳期 / 大流量
+   * 下载时手动选用。fallback 不使用 tolerance，字段显式
+   * 声明，不展开 urlTest。
+   */
+  groups.push({
+    name: '故障转移',
+    icon: ICON + 'quanqiu.png',
+
+    type: 'fallback',
+
+    proxies: proxyNames,
+
+    url: urlTest.url,
+
+    'expected-status': urlTest['expected-status'],
+
+    interval: urlTest.interval,
+
+    timeout: urlTest.timeout,
+
+    'max-failed-times': urlTest['max-failed-times'],
+
+    lazy: urlTest.lazy
+  })
+
+  /*
+   * 手动选择：自动选择 + 故障转移 + 地区组 + 其他节点 + 全部真实节点 + 直连。
    */
   groups.push({
     name: '手动选择',
@@ -830,6 +873,7 @@ function main(config) {
 
     proxies: [
       '自动选择',
+      '故障转移',
       ...regionGroups.map((item) => item.name),
       ...(hasOther ? ['其他节点'] : []),
       ...proxyNames,
@@ -902,7 +946,7 @@ function main(config) {
 
   /*
    * 显示顺序：
-   * 节点选择 / 自动选择 / 手动选择 / 业务组 / Final / 地区组 / 其他节点
+   * 节点选择 / 自动选择 / 故障转移 / 手动选择 / 业务组 / Final / 地区组 / 其他节点
    */
   const orderedGroups =
     groups.concat(regionGroupDefs, otherGroupDefs)

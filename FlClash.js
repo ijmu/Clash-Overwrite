@@ -1,6 +1,15 @@
 /*
  * FlClash.js
- * FlClash / Mihomo 动态覆写 v5.2（2026-10-17）
+ * FlClash / Mihomo 动态覆写 v5.3（2026-10-17）
+ *
+ * v5.3：与 ClashParty.js v5.3 同步的分组切换稳定性专项
+ *   （结构不变、业务组全保留）：
+ *   1. 新增「故障转移」组（fallback，include-all 动态成员）：
+ *      当前节点失效时按订阅顺序切到第一个存活节点，延迟
+ *      抖动不切换——长连接几乎不断流。纳入 节点选择 /
+ *      手动选择 / Final 候选；图标复用仓库闲置的 quanqiu.png。
+ *   2. 故障响应提速：测速间隔 300 → 180 秒；max-failed-times
+ *      2 → 1。tolerance 150 保持不变。
  *
  * v5.2：与 ClashParty.js v5.2 同步的运行日志实测优化（全部为增量）：
  *   1. NCSI 直连（msftconnecttest.com / msftncsi.com）：不在
@@ -126,14 +135,14 @@ function main(config) {
     url: 'https://www.gstatic.com/generate_204',
     'expected-status': 204,
 
-    // 5 分钟测速一次
-    interval: 300,
+    // 3 分钟测速一次（v5.3：300 → 180，与 ClashParty 同步）
+    interval: 180,
 
     // 单节点测速最多等待 3 秒
     timeout: 3000,
 
-    // 两次失败才触发强制重测
-    'max-failed-times': 2,
+    // 一次失败立即触发强制重测（v5.3：2 → 1）
+    'max-failed-times': 1,
 
     // 健康节点间的切换容差；当前节点测速不存活时另行切换。
     // v5.0：80 → 150，与 ClashParty 同步，
@@ -416,6 +425,7 @@ function main(config) {
 
   const FINAL_LISTS = [
     REF,
+    '故障转移',
     '香港节点',
     '台湾节点',
     '日本节点',
@@ -598,6 +608,7 @@ function main(config) {
 
     proxies: [
       '自动选择',
+      '故障转移',
       '手动选择',
       'DIRECT',
       ...REGION_DEFS.map((def) => def.name).filter(regionOk),
@@ -618,6 +629,39 @@ function main(config) {
     ...urlTest
   })
 
+  /*
+   * v5.3：故障转移（fallback，include-all 动态成员）。
+   * 当前节点失效时按订阅顺序切到第一个存活节点，延迟抖动
+   * 不切换；日常仍推荐自动选择，节点不稳期 / 大流量下载时
+   * 手动选用。与 ClashParty.js v5.3 同步；fallback 不使用
+   * tolerance，字段显式声明，不展开 urlTest。
+   */
+  groups.push({
+    name: '故障转移',
+    icon: REPO_ICON + 'quanqiu.png',
+
+    type: 'fallback',
+
+    'include-all': true,
+
+    'exclude-filter': infoExclude,
+
+    url: urlTest.url,
+
+    'expected-status': urlTest['expected-status'],
+
+    interval: urlTest.interval,
+
+    timeout: urlTest.timeout,
+
+    'max-failed-times': urlTest['max-failed-times'],
+
+    lazy: urlTest.lazy
+  })
+
+  /*
+   * 手动选择：自动选择 + 故障转移 + 地区组 + 其他节点 + 直连。
+   */
   groups.push({
     name: '手动选择',
     icon: REPO_ICON + 'jichang.png',
@@ -630,6 +674,7 @@ function main(config) {
 
     proxies: [
       '自动选择',
+      '故障转移',
       ...REGION_DEFS.map((def) => def.name).filter(regionOk),
       ...(hasOther ? ['其他节点'] : []),
       'DIRECT'

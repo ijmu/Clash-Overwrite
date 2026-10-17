@@ -197,6 +197,7 @@ v5.0 起与 ClashParty.js 同步全部优化（其他节点分组 / direct-names
 | 策略组       | 类型       | 用途                                      |
 | --------- | -------- | --------------------------------------- |
 | 自动选择      | url-test | 从所有真实节点直接选择延迟较优节点                       |
+| 故障转移      | fallback | 节点失效时按订阅顺序切到存活节点，不因延迟抖动切换（v5.3）        |
 | 手动选择      | select   | 手动选择地区组或具体节点                            |
 | 其他节点      | url-test | 未被地区规则识别节点的自动测速组（v5.0 起，无成员时隐藏）         |
 | AI服务      | select   | ChatGPT、Claude、Gemini、Grok、Perplexity 等 |
@@ -264,6 +265,33 @@ v5.0 起与 ClashParty.js 同步全部优化（其他节点分组 / direct-names
 
 ---
 
+# 故障转移
+
+v5.3 新增策略组：
+
+```text
+故障转移（fallback）
+```
+
+行为与自动选择的区别：
+
+| | 自动选择（url-test） | 故障转移（fallback） |
+| --- | --- | --- |
+| 切换时机 | 有更低延迟节点就切 | 当前节点失效才切 |
+| 切换目标 | 延迟最低者 | 订阅顺序中第一个存活者 |
+| 长连接稳定性 | 抖动时会断流重连 | 几乎不断流 |
+
+使用建议：
+
+```text
+日常浏览：节点选择 → 自动选择（延迟最优）
+节点不稳 / 大流量下载 / 长连接任务：节点选择 → 故障转移
+```
+
+已纳入 节点选择 / 手动选择 / Final 候选。
+
+---
+
 # 自动测速参数
 
 当前默认：
@@ -272,22 +300,22 @@ v5.0 起与 ClashParty.js 同步全部优化（其他节点分组 / direct-names
 url: https://www.gstatic.com/generate_204
 expected-status: 204
 
-interval: 300
+interval: 180
 timeout: 3000
 tolerance: 150
 lazy: true
-max-failed-times: 2
+max-failed-times: 1
 ```
 
 参数说明：
 
 | 参数               |    当前值 | 作用              |
 | ---------------- | -----: | --------------- |
-| interval         |   300s | 每 5 分钟测速        |
+| interval         |   180s | 每 3 分钟测速（v5.3：300 → 180，死节点复测等待缩短）        |
 | timeout          | 3000ms | 单节点测速超时         |
 | tolerance        |  150ms | 减少小幅延迟变化导致的节点切换 |
 | lazy             |   true | 策略组实际使用时才执行周期测速 |
-| max-failed-times |      2 | 减少单次网络抖动触发重选    |
+| max-failed-times |      1 | 一次失败立即触发强制重测（v5.3：2 → 1，加快故障响应）    |
 | expected-status  |    204 | 检查测速服务器返回状态     |
 
 这套参数主要平衡：
