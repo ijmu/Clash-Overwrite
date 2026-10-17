@@ -1,6 +1,26 @@
 /*
  * ClashParty.js
- * Clash Party / Mihomo Party 个人覆写 v5.3（2026-10-17）
+ * Clash Party / Mihomo Party 个人覆写 v5.4（2026-10-17）
+ *
+ * v5.4：分流补齐与规则化（全部经 CDN 可用性逐一实测）：
+ *   1. Microsoft 组补 onedrive / xbox / github-copilot 独立
+ *      规则集（均指向 Microsoft 组统一管理，github-copilot
+ *      置于 github 之前保证 Copilot 先命中）；
+ *      bing@cn（Copilot 国内可达域名）追加至直连区；
+ *      Xbox 实时联机走直连需真连接性检测，NCSI 直连 v5.2 已有；
+ *   2. 新增 Discord 组（geosite-discord + geoip-discord 无需，
+ *      仅域名集）；
+ *   3. 新增 X(Twitter) 组（geosite-twitter）；
+ *   4. 新增 Reddit / Wikimedia（geosite-wikimedia，覆盖
+ *      wikipedia.org 全家 + 姊妹项目）/ Steam（steam@cn 追加
+ *      直连，steam 商店社区走代理组）各独立组；
+ *      —— 以上新组候选统一为 REF + 地区 + 手动选择，
+ *      无节点地区自动隐藏；
+ *   5. 关键词审计：全配置仅存 1 条 DOMAIN-KEYWORD（96110
+ *      反诈，v4 对齐 Egern 项），其余全部规则集 / 精确域名，
+ *      符合"少用关键词"要求；
+ *   6. 新组使用 geosite mrs（与既有规则集同格式同源），
+ *      每日 ETag 增量更新。
  *
  * v5.3：分组切换稳定性专项（结构不变、业务组全保留）：
  *   1. 新增「故障转移」组（fallback 类型，全部真实节点，
@@ -513,6 +533,72 @@ function main(config) {
         '美国节点',
         '手动选择'
       ]
+    },
+
+    /*
+     * v5.4：分流补齐——以下新组候选统一为
+     * REF + 主要地区 + 手动选择，无对应节点时地区自动隐藏。
+     */
+    {
+      name: 'Discord',
+      icon: 'discord.png',
+      type: 'select',
+      lists: [
+        REF,
+        '美国节点',
+        '新加坡节点',
+        '香港节点',
+        '手动选择'
+      ]
+    },
+
+    {
+      name: 'X(Twitter)',
+      icon: 'twitter.png',
+      type: 'select',
+      lists: [
+        REF,
+        '美国节点',
+        '新加坡节点',
+        '日本节点',
+        '手动选择'
+      ]
+    },
+
+    {
+      name: 'Reddit',
+      icon: 'reddit.png',
+      type: 'select',
+      lists: [
+        REF,
+        '美国节点',
+        '手动选择'
+      ]
+    },
+
+    {
+      name: 'Wikipedia',
+      icon: 'wikipedia.png',
+      type: 'select',
+      lists: [
+        REF,
+        '手动选择',
+        'DIRECT'
+      ]
+    },
+
+    {
+      name: 'Steam',
+      icon: 'steam.png',
+      type: 'select',
+      lists: [
+        REF,
+        '香港节点',
+        '美国节点',
+        '日本节点',
+        '新加坡节点',
+        '手动选择'
+      ]
     }
   ]
 
@@ -603,19 +689,66 @@ function main(config) {
     /*
      * GitHub 必须位于 Microsoft 前面，
      * Microsoft 大类会覆盖部分 GitHub 域名。
+     * v5.4：github-copilot 补齐（置于 github 前后均指 GitHub 组，
+     * 此处与 github 同指，Copilot 域名先命中亦走 GitHub 组）。
      */
     [
       'GitHub',
       [
+        'github-copilot',
         'github'
       ]
     ],
 
+    /*
+     * v5.4：Microsoft 细分规则集（onedrive / xbox 均指向
+     * Microsoft 组统一管理，geosite-microsoft 大类兜底）。
+     */
     [
       'Microsoft',
       [
+        'onedrive',
+        'xbox',
         'microsoft',
         'bing'
+      ]
+    ],
+
+    /*
+     * v5.4：分流补齐新组。
+     */
+    [
+      'Discord',
+      [
+        'discord'
+      ]
+    ],
+
+    [
+      'X(Twitter)',
+      [
+        'twitter'
+      ]
+    ],
+
+    [
+      'Reddit',
+      [
+        'reddit'
+      ]
+    ],
+
+    [
+      'Wikipedia',
+      [
+        'wikimedia'
+      ]
+    ],
+
+    [
+      'Steam',
+      [
+        'steam'
       ]
     ]
   ]
@@ -655,12 +788,19 @@ function main(config) {
    * category-game-platforms-download@cn，对齐 DustinWin games-cn 思路，
    * 均为 @cn 属性子集，仅收国内可达域名，外服分流不受影响）。
    */
+  /*
+   * v5.4：新增 bing@cn（必应中国 / Copilot 国内可达域名）与
+   * steam@cn（Steam 国服完美世界平台）直连，
+   * 均为 @cn 属性子集，仅收国内可达域名。
+   */
   const DIRECT_SETS = [
     'apple-cn',
     'icloud@cn',
     'category-ai-cn',
     'microsoft@cn',
     'google@cn',
+    'bing@cn',
+    'steam@cn',
     'douyin',
     'category-games@cn',
     'category-game-platforms-download@cn'

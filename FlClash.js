@@ -1,6 +1,15 @@
 /*
  * FlClash.js
- * FlClash / Mihomo 动态覆写 v5.3（2026-10-17）
+ * FlClash / Mihomo 动态覆写 v5.4（2026-10-17）
+ *
+ * v5.4：与 ClashParty.js v5.4 同步的分流补齐与规则化（全部经
+ *   CDN 可用性逐一实测）：
+ *   1. Microsoft 组补 onedrive / xbox / github-copilot 独立
+ *      规则集（均指向原组统一管理）；bing@cn / steam@cn
+ *      追加至直连区；
+ *   2. 新增 Discord / X(Twitter) / Reddit / Wikimedia / Steam
+ *      独立组（候选统一 REF + 主要地区 + 手动选择，无节点
+ *      地区自动隐藏）；图标 5 枚已入库 icons/（lige47 图标库）。
  *
  * v5.3：与 ClashParty.js v5.3 同步的分组切换稳定性专项
  *   （结构不变、业务组全保留）：
@@ -420,6 +429,73 @@ function main(config) {
         '美国节点',
         '手动选择'
       ]
+    },
+
+    /*
+     * v5.4：分流补齐——以下新组候选统一为
+     * REF + 主要地区 + 手动选择，无对应节点时地区自动隐藏。
+     * 与 ClashParty.js v5.4 同步。
+     */
+    {
+      name: 'Discord',
+      icon: REPO_ICON + 'discord.png',
+      type: 'select',
+      lists: [
+        REF,
+        '美国节点',
+        '新加坡节点',
+        '香港节点',
+        '手动选择'
+      ]
+    },
+
+    {
+      name: 'X(Twitter)',
+      icon: REPO_ICON + 'twitter.png',
+      type: 'select',
+      lists: [
+        REF,
+        '美国节点',
+        '新加坡节点',
+        '日本节点',
+        '手动选择'
+      ]
+    },
+
+    {
+      name: 'Reddit',
+      icon: REPO_ICON + 'reddit.png',
+      type: 'select',
+      lists: [
+        REF,
+        '美国节点',
+        '手动选择'
+      ]
+    },
+
+    {
+      name: 'Wikipedia',
+      icon: REPO_ICON + 'wikipedia.png',
+      type: 'select',
+      lists: [
+        REF,
+        '手动选择',
+        'DIRECT'
+      ]
+    },
+
+    {
+      name: 'Steam',
+      icon: REPO_ICON + 'steam.png',
+      type: 'select',
+      lists: [
+        REF,
+        '香港节点',
+        '美国节点',
+        '日本节点',
+        '新加坡节点',
+        '手动选择'
+      ]
     }
   ]
 
@@ -490,18 +566,67 @@ function main(config) {
       ]
     ],
 
+    /*
+     * GitHub 必须位于 Microsoft 前面，
+     * Microsoft 大类会覆盖部分 GitHub 域名。
+     * v5.4：github-copilot 补齐（同指 GitHub 组）。
+     */
     [
       'GitHub',
       [
+        'github-copilot',
         'github'
       ]
     ],
 
+    /*
+     * v5.4：Microsoft 细分规则集（均指向 Microsoft 组统一管理）。
+     */
     [
       'Microsoft',
       [
+        'onedrive',
+        'xbox',
         'microsoft',
         'bing'
+      ]
+    ],
+
+    /*
+     * v5.4：分流补齐新组。
+     */
+    [
+      'Discord',
+      [
+        'discord'
+      ]
+    ],
+
+    [
+      'X(Twitter)',
+      [
+        'twitter'
+      ]
+    ],
+
+    [
+      'Reddit',
+      [
+        'reddit'
+      ]
+    ],
+
+    [
+      'Wikipedia',
+      [
+        'wikimedia'
+      ]
+    ],
+
+    [
+      'Steam',
+      [
+        'steam'
       ]
     ]
   ]
@@ -510,12 +635,18 @@ function main(config) {
 
   const BLOCK_QUIC = true
 
+  /*
+   * v5.4：新增 bing@cn 与 steam@cn 直连（@cn 属性子集，
+   * 仅收国内可达域名）。与 ClashParty.js v5.4 同步。
+   */
   const DIRECT_SETS = [
     'apple-cn',
     'icloud@cn',
     'category-ai-cn',
     'microsoft@cn',
     'google@cn',
+    'bing@cn',
+    'steam@cn',
     'douyin',
     'category-games@cn',
     'category-game-platforms-download@cn'

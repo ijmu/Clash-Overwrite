@@ -26,6 +26,8 @@ Clash-Overwrite/
 * 加密货币 / Web3 独立分流
 * 国内外流媒体分流
 * Apple / Google / Microsoft / GitHub 独立分流
+* Discord / X(Twitter) / Reddit / Wikipedia / Steam 独立分流（v5.4）
+* Microsoft 系细分规则（OneDrive / Xbox / Copilot 规则集，v5.4）
 * 中国大陆流量直连
 * 游戏平台国内域名直连（category-games@cn）
 * 腾讯系域名直连（修复微信群头像 / 聊天图片加载）
@@ -207,7 +209,12 @@ v5.0 起与 ClashParty.js 同步全部优化（其他节点分组 / direct-names
 | Apple     | select   | Apple / iCloud                          |
 | Google    | select   | Google 服务                               |
 | Microsoft | select   | Microsoft / Bing                        |
-| GitHub    | select   | GitHub                                  |
+| GitHub    | select   | GitHub / GitHub Copilot                 |
+| Discord   | select   | Discord（v5.4 新增）                     |
+| X(Twitter) | select  | X / Twitter（v5.4 新增）                 |
+| Reddit    | select   | Reddit（v5.4 新增）                      |
+| Wikipedia | select   | Wikipedia / 姊妹项目（v5.4 新增）         |
+| Steam     | select   | Steam 商店 / 社区（v5.4 新增，国服与下载 CDN 直连） |
 | Final     | select   | 未匹配流量最终出口                               |
 
 地区组：
